@@ -31,7 +31,7 @@ BUILD = threading.Lock()
 REPORTS = os.path.expanduser(CONFIG.get("reports_dir") or os.path.join("~", "Documents", "DailyWorkReport", "reports"))
 
 
-def search(q):
+def search(q: str) -> list[dict]:
     """Every day whose tickets, branches, prompts, commits or work log mention q, newest first.
     Hours = the day's hours (7-19) of the projects where q was found."""
     q = q.strip().lower()
@@ -53,7 +53,7 @@ def search(q):
             continue
         hits, projects = [], set()
 
-        def hit(kind, proj, text, hits=hits, projects=projects):
+        def hit(kind: str, proj: str, text: object, hits: list = hits, projects: set = projects) -> None:
             if q in str(text).lower():
                 projects.add(proj)
                 if len(hits) < 6:
@@ -79,14 +79,14 @@ def search(q):
 
 
 class Handler(SimpleHTTPRequestHandler):
-    def __init__(self, *a, **kw):
+    def __init__(self, *a: object, **kw: object) -> None:
         super().__init__(*a, directory=HERE, **kw)
 
-    def end_headers(self):
+    def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")                 # F5 always shows the newest data
         super().end_headers()
 
-    def send_json(self, obj, code=200):
+    def send_json(self, obj: object, code: int = 200) -> None:
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -94,7 +94,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path in ("/", "/index.html") or (path.startswith("/days/") and path.endswith((".html", ".json"))):
             return super().do_GET()
@@ -112,7 +112,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"md": open(f, encoding="utf-8-sig", errors="ignore").read()})
         self.send_error(404)                                          # nothing else in the folder is served
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         url = urlparse(self.path)
         if url.path != "/refresh":
             return self.send_error(404)
@@ -130,7 +130,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *a):
+    def log_message(self, *a: object) -> None:
         pass
 
 
@@ -139,7 +139,7 @@ class OneServer(ThreadingHTTPServer):
     and a second copy must fail to bind and quit (Windows would otherwise let it share the port)."""
     allow_reuse_address = False
 
-    def server_bind(self):
+    def server_bind(self) -> None:
         if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         super().server_bind()

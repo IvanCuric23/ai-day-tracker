@@ -29,7 +29,7 @@ logging.basicConfig(filename=os.path.join(HERE, "clock.log"), level=logging.WARN
 logger = logging.getLogger(__name__)
 
 
-def read_json(path, encoding="utf-8"):
+def read_json(path: str, encoding: str = "utf-8") -> dict:
     """The JSON object in a file; {} when it is missing, or unreadable (that is logged)."""
     try:
         with open(path, encoding=encoding) as f:
@@ -41,12 +41,12 @@ def read_json(path, encoding="utf-8"):
         return {}
 
 
-def load_config():
+def load_config() -> dict:
     """config.json next to this script (written by install.ps1); every key is optional."""
     return read_json(os.path.join(HERE, "config.json"), "utf-8-sig")
 
 
-def git_authors():
+def git_authors() -> list[str]:
     """No authors in config.json: use your git user.name and user.email."""
     out = []
     for key in ("user.name", "user.email"):
@@ -73,14 +73,14 @@ T0 = datetime.combine(DAY, time()).astimezone()
 T1 = T0 + timedelta(days=1)
 
 
-def ts(s):
+def ts(s: object) -> datetime | None:
     try:
         return datetime.fromisoformat(str(s).replace("Z", "+00:00")).astimezone()
     except (ValueError, OverflowError, OSError):       # not a timestamp, or out of the platform's range
         return None
 
 
-def touched_today(path):
+def touched_today(path: str) -> bool:
     try:
         return os.path.getmtime(path) >= T0.timestamp()
     except OSError:
@@ -96,7 +96,7 @@ CANON = {"ai-agent-templates": "AI-Agent-Templates", "test-writer-plugin": "Test
 OTHER = "Other (no project folder)"
 
 
-def project(cwd):
+def project(cwd: str | None) -> str:
     if not cwd:
         return OTHER
     p = cwd.replace("/", "\\")
@@ -110,7 +110,7 @@ def project(cwd):
     return OTHER
 
 
-def clean(text):
+def clean(text: str | None) -> str:
     text = re.sub(r"<[^>]+>.*?</[^>]+>", " ", text or "", flags=re.S)
     text = re.sub(r"\s+", " ", text).strip()
     if text.startswith(("Caveat:", "[Request interrupted", "<", "This session is being continued")):
@@ -123,7 +123,7 @@ prompts = collections.defaultdict(list)
 cwds = collections.defaultdict(set)
 
 
-def add(t, proj, branch, cwd=None):
+def add(t: datetime | None, proj: str, branch: str | None, cwd: str | None = None) -> bool:
     if t and T0 <= t < T1:
         events.append((t, proj, branch or "?"))
         if cwd:
@@ -132,7 +132,7 @@ def add(t, proj, branch, cwd=None):
     return False
 
 
-def ask(t, proj, tool, text):
+def ask(t: datetime, proj: str, tool: str, text: str | None) -> None:
     text = clean(text)
     if text and T0 <= t < T1:
         prompts[proj].append((t, tool, text))
@@ -234,16 +234,16 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
 
 
 # ---- time maths ---------------------------------------------------------
-def is_day(t):
+def is_day(t: datetime) -> bool:
     return DAY_FROM <= t.hour < DAY_TO
 
 
-def active(times):
+def active(times: list[datetime]) -> float:
     times = sorted(times)
     return sum(g for g in ((b - a).total_seconds() for a, b in zip(times, times[1:], strict=False)) if g <= GAP)
 
 
-def segments(times):
+def segments(times: list[datetime]) -> list[list[float]]:
     out, times = [], sorted(times)
     for t in times:
         m = (t - T0).total_seconds() / 60
@@ -254,7 +254,7 @@ def segments(times):
     return [[round(a, 1), round(max(b, a + 2), 1)] for a, b in out]
 
 
-def ticket(branch):
+def ticket(branch: str | None) -> str:
     if branch in TICKETS:
         return TICKETS[branch]
     m = re.search(r"([A-Z][A-Z0-9]+-\d+)", branch or "")
@@ -315,7 +315,7 @@ for p, dirs in cwds.items():
 JIRA_URL = CONFIG.get("jira_url") or TICKETS.get("_jira", "")    # e.g. https://jira.example.com/browse/
 
 
-def devops_items(remote):
+def devops_items(remote: str) -> str:
     m = (re.search(r"dev\.azure\.com[:/](?:v3/)?([^/]+)/([^/]+)/(?:_git/)?[^/]+$", remote)
          or re.search(r"//(?:[^@/]+@)?([^./]+)\.visualstudio\.com/(?:DefaultCollection/)?([^/]+)/_git/", remote))
     return f"https://dev.azure.com/{m.group(1)}/{m.group(2)}/_workitems/edit/" if m else ""
@@ -397,7 +397,7 @@ PALETTE = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#edc948", "#76b7b2", "#b
 COLORS_FILE = os.path.join(HERE, "days", "colors.json")
 
 
-def update_colors(summary=None):
+def update_colors(summary: dict | None = None) -> dict[str, str]:
     colors = read_json(COLORS_FILE)
     hours = collections.Counter()
     for s in (summary or {}).values():
@@ -432,13 +432,13 @@ print(f"{len(events)} steps, {len(by_proj)} projects, {data['union']['all'] / 36
 
 
 # ---- calendar dashboard: one summary line per day, rebuilt into index.html ----------
-def project_hours(mode):
+def project_hours(mode: str) -> dict[str, float]:
     total = sum(r[mode] for p in data["projects"] for r in p["rows"]) or 1
     k = data["union"][mode] / total / 3600
     return {p["name"]: sum(r[mode] for r in p["rows"]) * k for p in data["projects"]}
 
 
-def ticket_rows():
+def ticket_rows() -> list[list]:
     """[project, ticket, hours 7-19, hours all day] per ticket row, for the week view."""
     out = []
     for mode in ("day", "all"):

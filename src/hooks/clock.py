@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 @functools.lru_cache(None)
-def tickets():
+def tickets() -> dict[str, str]:
     try:
         return json.load(open(TICKETS_FILE, encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
 
-def ticket(branch, proj=""):
+def ticket(branch: str | None, proj: str = "") -> tuple[str, str]:
     known = tickets()
     if branch in known:
         t = known[branch]
@@ -48,7 +48,7 @@ def ticket(branch, proj=""):
     return t, ("Jira" if "-" in t else "DevOps" if t else "")
 
 
-def git(cwd, *args):
+def git(cwd: str, *args: str) -> str:
     try:
         r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8",
                            errors="ignore", timeout=3)
@@ -58,18 +58,18 @@ def git(cwd, *args):
 
 
 @functools.lru_cache(None)
-def project(cwd):
+def project(cwd: str) -> str:
     root = git(cwd, "rev-parse", "--show-toplevel") or cwd
     name = os.path.basename(root.rstrip("\\/"))
     w = re.search(r"(?i)worktrees[\\/](?:[^\\/_]+_)?([^\\/]+)", cwd or "")
     return w.group(1) if w else name
 
 
-def short(text):
+def short(text: str | None) -> str:
     return re.sub(r"\s+", " ", text or "").strip()[:TEXT]
 
 
-def last_answer(transcript):
+def last_answer(transcript: str) -> tuple[str, str]:
     """First line of the AI's last text answer + model, read from the end of the transcript."""
     try:
         with open(transcript, "rb") as f:
@@ -91,7 +91,7 @@ def last_answer(transcript):
     return "", ""
 
 
-def line(t, event, tool, session, cwd, branch, **extra):
+def line(t: datetime, event: str, tool: str, session: str, cwd: str, branch: str, **extra: object) -> dict[str, object]:
     proj = project(cwd) if cwd else ""
     tk, system = ticket(branch, proj)
     out = {"time": t.isoformat(timespec="seconds"), "event": event, "tool": tool, "session": session[:8],
@@ -100,14 +100,14 @@ def line(t, event, tool, session, cwd, branch, **extra):
     return out
 
 
-def write(rows):
+def write(rows: list[dict[str, object]]) -> None:
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with open(LOG, "a", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
 
-def hook(tool, event):
+def hook(tool: str, event: str) -> None:
     raw = sys.stdin.buffer.read().decode("utf-8-sig", errors="replace") if not sys.stdin.isatty() else ""
     try:
         data = json.loads(raw) if raw.strip() else {}
@@ -131,7 +131,7 @@ def hook(tool, event):
     write([line(datetime.now().astimezone(), event, tool, session, cwd, branch, **extra)])
 
 
-def backfill(day):
+def backfill(day: str) -> None:
     """Rebuild one day's clock lines from Claude Code history (branch as it was then)."""
     start = datetime.fromisoformat(day).astimezone()
     end = start + timedelta(days=1)

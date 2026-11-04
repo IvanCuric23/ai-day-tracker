@@ -21,13 +21,13 @@ COPILOT_EVENTS = [("sessionStart", "start"), ("userPromptSubmitted", "prompt"), 
                   ("sessionEnd", "end")]
 
 
-def is_clock(hook):
+def is_clock(hook: dict) -> bool:
     """True for a hook that runs clock.py (ours, from any earlier install)."""
     text = " ".join([str(hook.get("command", ""))] + [str(a) for a in hook.get("args", [])])
     return "/hooks/clock.py" in text.replace("\\", "/").lower()
 
 
-def read_settings():
+def read_settings() -> tuple[dict, str]:
     if not os.path.exists(CLAUDE_SETTINGS):
         return {}, "\n"
     raw = open(CLAUDE_SETTINGS, "rb").read()
@@ -35,7 +35,7 @@ def read_settings():
     return (json.loads(text) if text.strip() else {}), ("\r\n" if b"\r\n" in raw else "\n")
 
 
-def write_settings(settings, newline):
+def write_settings(settings: dict, newline: str) -> None:
     os.makedirs(os.path.dirname(CLAUDE_SETTINGS), exist_ok=True)
     if os.path.exists(CLAUDE_SETTINGS):
         backup = f"{CLAUDE_SETTINGS}.bak-ai-day-tracker-{datetime.now():%Y%m%d-%H%M%S}"
@@ -46,7 +46,7 @@ def write_settings(settings, newline):
         f.write(text.replace("\n", newline))
 
 
-def remove_clock_hooks(settings):
+def remove_clock_hooks(settings: dict) -> int:
     """Drops every clock.py hook; groups and events left empty are dropped too. Returns how many were removed."""
     removed = 0
     hooks = settings.get("hooks") or {}
@@ -66,7 +66,7 @@ def remove_clock_hooks(settings):
     return removed
 
 
-def install_claude(python):
+def install_claude(python: str) -> None:
     settings, newline = read_settings()
     remove_clock_hooks(settings)
     hooks = settings.setdefault("hooks", {})
@@ -77,11 +77,11 @@ def install_claude(python):
     print(f"  Claude Code hooks added to {CLAUDE_SETTINGS}")
 
 
-def install_copilot(python):
-    def ps_quote(s):
+def install_copilot(python: str) -> None:
+    def ps_quote(s: str) -> str:
         return "'" + s.replace("'", "''") + "'"
 
-    def sh_path(p):
+    def sh_path(p: str) -> str:
         p = p.replace("\\", "/")
         return "'" + (f"/{p[0].lower()}{p[2:]}" if len(p) > 1 and p[1] == ":" else p) + "'"
 
@@ -95,7 +95,7 @@ def install_copilot(python):
     print(f"  Copilot CLI hooks written to {COPILOT_FILE}")
 
 
-def uninstall():
+def uninstall() -> None:
     settings, newline = read_settings()
     n = remove_clock_hooks(settings)
     if n:
