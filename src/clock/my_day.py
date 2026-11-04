@@ -20,6 +20,7 @@ import subprocess
 import sys
 import urllib.parse
 import webbrowser
+from collections.abc import Iterator
 from datetime import date, datetime, time, timedelta, timezone
 
 HOME = os.path.expanduser("~")
@@ -36,12 +37,27 @@ def read_json(path: str, encoding: str = "utf-8") -> dict:
     """The JSON object in a file; {} when it is missing, or unreadable (that is logged)."""
     try:
         with open(path, encoding=encoding) as f:
-            return json.load(f)
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
     except FileNotFoundError:
         return {}
     except (OSError, ValueError):
         logger.warning("cannot read %s", path, exc_info=True)
         return {}
+
+
+def read_jsonl(path: str) -> Iterator[dict]:
+    """The JSON objects of a .jsonl file; a line that is not valid JSON, or not an object, is skipped."""
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                entry = None
+            if isinstance(entry, dict):
+                yield entry
+            else:
+                logger.debug("skipping a bad line in %s", path)
 
 
 def load_config() -> dict:
@@ -146,12 +162,7 @@ for f in glob.glob(os.path.join(HOME, ".claude", "projects", "*", "*.jsonl")):
     if not touched_today(f):
         continue
     cwd = branch = None
-    for line in open(f, encoding="utf-8", errors="ignore"):
-        try:
-            e = json.loads(line)
-        except ValueError:
-            logger.debug("skipping a bad line in %s", f)
-            continue
+    for e in read_jsonl(f):
         cwd, branch = e.get("cwd") or cwd, e.get("gitBranch") or branch
         t = ts(e.get("timestamp"))
         proj = project(cwd)
@@ -167,12 +178,7 @@ for f in glob.glob(os.path.join(HOME, ".copilot", "session-state", "*", "events.
     if not touched_today(f):
         continue
     cwd = branch = None
-    for line in open(f, encoding="utf-8", errors="ignore"):
-        try:
-            e = json.loads(line)
-        except ValueError:
-            logger.debug("skipping a bad line in %s", f)
-            continue
+    for e in read_jsonl(f):
         if e.get("type") == "session.start":
             ctx = (e.get("data") or {}).get("context") or {}
             cwd, branch = ctx.get("cwd"), ctx.get("branch")
@@ -183,17 +189,20 @@ for f in glob.glob(os.path.join(HOME, ".copilot", "session-state", "*", "events.
 # Copilot session store (keeps sessions whose event files were already pruned)
 dbf = os.path.join(HOME, ".copilot", "session-store.db")
 if os.path.exists(dbf):
-    db = sqlite3.connect(f"file:{dbf}?mode=ro", uri=True)
-    sess = {i: (c, b) for i, c, b in db.execute("select id, cwd, branch from sessions")}
-    for sid, created, dur in db.execute("select session_id, created_at, duration_ms from assistant_usage_events"):
-        t, (cwd, branch) = ts(created), sess.get(sid, (None, None))
-        if add(t, project(cwd), branch, cwd) and dur:
-            add(t + timedelta(milliseconds=dur), project(cwd), branch)
-    seen = {(p, x[2][:80]) for p, v in prompts.items() for x in v}
-    for sid, msg, stamp in db.execute("select session_id, user_message, timestamp from turns"):
-        t, (cwd, branch) = ts(stamp), sess.get(sid, (None, None))
-        if t and (project(cwd), clean(msg)[:80]) not in seen:
-            ask(t, project(cwd), "Copilot", msg)
+    try:
+        db = sqlite3.connect(f"file:{dbf}?mode=ro", uri=True)
+        sess = {i: (c, b) for i, c, b in db.execute("select id, cwd, branch from sessions")}
+        for sid, created, dur in db.execute("select session_id, created_at, duration_ms from assistant_usage_events"):
+            t, (cwd, branch) = ts(created), sess.get(sid, (None, None))
+            if add(t, project(cwd), branch, cwd) and dur:
+                add(t + timedelta(milliseconds=dur), project(cwd), branch)
+        seen = {(p, x[2][:80]) for p, v in prompts.items() for x in v}
+        for sid, msg, stamp in db.execute("select session_id, user_message, timestamp from turns"):
+            t, (cwd, branch) = ts(stamp), sess.get(sid, (None, None))
+            if t and (project(cwd), clean(msg)[:80]) not in seen:
+                ask(t, project(cwd), "Copilot", msg)
+    except (sqlite3.Error, TypeError, OverflowError):               # a corrupt store must not fail the day
+        logger.warning("skipping the Copilot session store %s", dbf, exc_info=True)
 
 # VS Code Copilot Chat
 vsc = os.path.join(os.environ.get("APPDATA", ""), "Code", "User")
@@ -203,16 +212,11 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
     proj, cwd = OTHER, None
     wj = os.path.join(os.path.dirname(os.path.dirname(f)), "workspace.json")
     if os.path.exists(wj):
-        uri = json.load(open(wj, encoding="utf-8")).get("folder") or ""
+        uri = read_json(wj).get("folder") or ""
         cwd = urllib.parse.unquote(uri.replace("file:///", "")).replace("/", "\\")
         proj = project(cwd)
     reqs = {}
-    for line in open(f, encoding="utf-8", errors="ignore"):
-        try:
-            e = json.loads(line)
-        except ValueError:
-            logger.debug("skipping a bad line in %s", f)
-            continue
+    for e in read_jsonl(f):
         k, v = e.get("k"), e.get("v")
         items = []
         if e.get("kind") == 0 and isinstance(v, dict):
@@ -226,8 +230,12 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
             if isinstance(r, dict) and r.get("timestamp"):
                 reqs[i] = [r["timestamp"], (r.get("modelState") or {}).get("completedAt"), (r.get("message") or {}).get("text")]
     for st, en, txt in reqs.values():
-        a = datetime.fromtimestamp(st / 1000, timezone.utc).astimezone()
-        b = datetime.fromtimestamp(en / 1000, timezone.utc).astimezone() if en else a
+        try:
+            a = datetime.fromtimestamp(st / 1000, timezone.utc).astimezone()
+            b = datetime.fromtimestamp(en / 1000, timezone.utc).astimezone() if en else a
+        except (TypeError, ValueError, OverflowError, OSError):
+            logger.debug("skipping a request with a bad timestamp in %s", f)
+            continue
         t = a
         while t <= b:
             add(t, proj, "?", cwd)

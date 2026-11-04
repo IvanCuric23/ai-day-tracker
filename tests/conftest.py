@@ -71,3 +71,12 @@ def built_day(tmp_path_factory):
     result = run_my_day(clock)
     assert result.returncode == 0, result.stderr
     return clock, DAY
+
+
+@pytest.fixture
+def fresh_clock(built_day, tmp_path):
+    """A private copy of the built clock folder and of its Claude session, ready for my_day.py to run again."""
+    clock = tmp_path / "home" / "clock"
+    shutil.copytree(built_day[0], clock, ignore=shutil.ignore_patterns("days", "index.html", "clock.log"))
+    shutil.copytree(built_day[0].parent / ".claude", clock.parent / ".claude")
+    return clock

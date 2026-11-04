@@ -99,3 +99,10 @@ def test_script_stays_silent_when_log_folder_cannot_be_created(tmp_path):
     result = subprocess.run([sys.executable, "-X", "utf8", str(HOOK), "backfill", "not-a-date"], input=b"",
                             capture_output=True, cwd=tmp_path, env=env, timeout=30)
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+def test_last_answer_skips_json_lines_that_are_not_objects(clock, isolated_home):
+    answer = {"type": "assistant", "message": {"model": "m1", "content": [{"type": "text", "text": "hello there\nmore"}]}}
+    transcript = isolated_home / "t.jsonl"
+    transcript.write_text("\n".join([json.dumps(answer), "123", "[]", '"x"']), encoding="utf-8")
+    assert clock.last_answer(str(transcript)) == ("hello there", "m1")

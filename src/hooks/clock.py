@@ -83,6 +83,8 @@ def last_answer(transcript: str) -> tuple[str, str]:
             e = json.loads(line)
         except ValueError:
             continue
+        if not isinstance(e, dict):
+            continue
         msg = e.get("message") or {}
         if e.get("type") == "assistant" and isinstance(msg.get("content"), list):
             text = " ".join(c.get("text", "") for c in msg["content"] if c.get("type") == "text").strip()
