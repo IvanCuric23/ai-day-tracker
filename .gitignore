@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+src/clock/days/
+src/clock/index.html
+src/clock/config.json
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.log

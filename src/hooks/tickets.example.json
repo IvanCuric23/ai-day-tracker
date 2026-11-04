@@ -1,0 +1,3 @@
+{
+  "_help": "Branch name -> ticket, or \"project:<folder name>\" -> ticket for all work in that folder when the branch has no ticket. Jira = ABC-123, Azure DevOps = the number."
+}

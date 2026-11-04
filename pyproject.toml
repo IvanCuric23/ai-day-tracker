@@ -1,0 +1,18 @@
+[project]
+name = "ai-day-tracker"
+version = "0.1.0"
+description = "Tracks Claude Code and GitHub Copilot sessions and builds a local dashboard of where your workday went."
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 132
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
