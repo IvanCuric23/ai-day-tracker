@@ -87,3 +87,14 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -RemoveData
 | A day is empty | Click **⟳ Refresh today**, or run `python %USERPROFILE%\.claude\clock\my_day.py 2026-11-03 --no-open` |
 | The 17:00 run failed | Read `%USERPROFILE%\.claude\clock\days\last-run.log` |
 | Commits are missing | Check `authors` in `config.json` |
+
+## Development
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements-dev.txt
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m pytest
+```
+
+Tests use invented data in a temporary folder and never read your real Claude Code or Copilot history.
