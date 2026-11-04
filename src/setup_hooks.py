@@ -7,7 +7,9 @@ Claude Code: merges four hooks into ~/.claude/settings.json (a backup is written
 Copilot CLI: writes its own file ~/.copilot/hooks/clock.json.
 Running install twice is safe: old clock hooks are replaced, never doubled.
 """
-import json, os, sys
+import json
+import os
+import sys
 from datetime import datetime
 
 HOME = os.path.expanduser("~")

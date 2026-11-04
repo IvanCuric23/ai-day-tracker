@@ -10,7 +10,14 @@ disturb the session.
 
     python clock.py backfill 2026-11-02   -> rebuild that day's lines from Claude history (demo / gaps)
 """
-import functools, glob, json, os, re, subprocess, sys, zlib
+import functools
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+import zlib
 from datetime import datetime, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))

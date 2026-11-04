@@ -8,7 +8,17 @@ what you asked and what you committed.
     python -X utf8 my_day.py 2026-11-02   -> that day
     python -X utf8 my_day.py yesterday
 """
-import collections, glob, html, json, os, re, sqlite3, subprocess, sys, urllib.parse, webbrowser
+import collections
+import glob
+import html
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import urllib.parse
+import webbrowser
 from datetime import date, datetime, time, timedelta, timezone
 
 HOME = os.path.expanduser("~")
@@ -217,7 +227,7 @@ def is_day(t):
 
 def active(times):
     times = sorted(times)
-    return sum(g for g in ((b - a).total_seconds() for a, b in zip(times, times[1:])) if g <= GAP)
+    return sum(g for g in ((b - a).total_seconds() for a, b in zip(times, times[1:], strict=False)) if g <= GAP)
 
 
 def segments(times):
@@ -282,7 +292,7 @@ for p, dirs in cwds.items():
         found = [(line.split("\t", 2) + ["", ""])[:3] for line in out.splitlines()]
         names = subprocess.run(["git", "-C", root, "name-rev", "--name-only", "--refs=*/heads/*", "--refs=*/remotes/*"]
                                + [h for h, _, _ in found], capture_output=True, text=True).stdout.split() if found else []
-        for (h, hm, s), ref in zip(found, names + [""] * len(found)):
+        for (h, hm, s), ref in zip(found, names + [""] * len(found), strict=False):
             if s not in seen:
                 seen.add(s)
                 br = re.sub(r"^(remotes/)?(origin/)?|[~^].*$", "", ref)
@@ -427,7 +437,7 @@ def ticket_rows():
         total = sum(r[mode] for p in data["projects"] for r in p["rows"]) or 1
         k = data["union"][mode] / total / 3600
         for p in data["projects"]:
-            for i, r in enumerate(p["rows"]):
+            for r in p["rows"]:
                 if mode == "day":
                     out.append([p["name"], r["ticket"], round(r["day"] * k, 2), 0])
                 else:

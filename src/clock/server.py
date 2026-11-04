@@ -10,7 +10,13 @@ r"""My AI dashboard: serves the calendar at http://localhost:<port> (config.json
 Started hidden at logon (Startup folder) and every 5 min by the "My AI dashboard server" task; a copy that finds
 the port taken quits at once, so exactly one server runs.
 """
-import json, os, re, socket, subprocess, sys, threading
+import json
+import os
+import re
+import socket
+import subprocess
+import sys
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -47,7 +53,7 @@ def search(q):
             continue
         hits, projects = [], set()
 
-        def hit(kind, proj, text):
+        def hit(kind, proj, text, hits=hits, projects=projects):
             if q in str(text).lower():
                 projects.add(proj)
                 if len(hits) < 6:

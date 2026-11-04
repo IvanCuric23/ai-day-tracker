@@ -3,7 +3,9 @@
 Yesterday is rebuilt too, so work you did after 17:00 still lands on the right day.
 Errors go to days/last-run.log.
 """
-import os, subprocess, sys
+import os
+import subprocess
+import sys
 from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
