@@ -31,3 +31,12 @@ def test_unreadable_summary_is_logged_and_rebuilt(built_day, tmp_path):
     assert result.returncode == 0, result.stderr
     assert "cannot read" in (clock / "clock.log").read_text(encoding="utf-8")
     assert list(json.loads((clock / "days" / "summary.json").read_text(encoding="utf-8"))) == [DAY]
+
+
+def test_build_survives_an_unopenable_log_file(built_day, tmp_path):
+    clock = tmp_path / "clock"
+    shutil.copytree(built_day[0], clock, ignore=shutil.ignore_patterns("days", "index.html", "clock.log"))
+    (clock / "clock.log").mkdir()                                      # opening a folder as the log file raises OSError
+    result = run_my_day(clock)
+    assert result.returncode == 0, result.stderr
+    assert (clock / "days" / f"{DAY}.json").is_file()
