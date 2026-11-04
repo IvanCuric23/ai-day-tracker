@@ -1,0 +1,9 @@
+[project]
+name = "ai-day-tracker"
+version = "0.1.0"
+description = "Tracks Claude Code and GitHub Copilot sessions and builds a local dashboard of where your workday went."
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
