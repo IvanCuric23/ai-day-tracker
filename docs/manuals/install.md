@@ -100,4 +100,4 @@ Download the new ZIP (or run `git pull`), then double-click `install.cmd` again.
 
 - Settings, ticket matching and how time is counted: see the [README](../../README.md).
 - Checked against `install.ps1`, `install.cmd`, `uninstall.ps1` and `uninstall.cmd` on branch `feature/initial-version`. The install itself was not run to write this page.
-- `winget` package IDs: `Git.Git` is shown in Microsoft's docs; Microsoft's Python page shows `Python.Python.3.14`, and `Python.Python.3.12` is not shown there (same naming pattern, unconfirmed). If it is not found, run `winget search Python.Python`.
+- `winget` package IDs: `Git.Git` is shown in Microsoft's docs; `Python.Python.3.12` was checked with `winget show --id Python.Python.3.12` (Python Software Foundation, 3.12.10 on 2026-11-04). Any newer `Python.Python.3.x` works too; `winget search Python.Python` lists them.
