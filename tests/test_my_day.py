@@ -75,3 +75,32 @@ def test_json_lines_that_are_not_objects_are_skipped(fresh_clock):
     assert result.returncode == 0, result.stderr
     data = json.loads((fresh_clock / "days" / f"{DAY}.json").read_text(encoding="utf-8"))
     assert [x[2] for x in data["projects"][0]["prompts"]] == list(PROMPTS)
+
+
+def add_vscode_chat(home, name, workspace, requests):
+    """One VS Code chat session file (touched on DAY) under workspaceStorage/<name>, with its workspace.json."""
+    folder = home / "AppData" / "Code" / "User" / "workspaceStorage" / name
+    (folder / "chatSessions").mkdir(parents=True)
+    (folder / "workspace.json").write_text(json.dumps(workspace), encoding="utf-8")
+    chat = folder / "chatSessions" / "c.jsonl"
+    chat.write_text(json.dumps({"kind": 0, "v": {"requests": requests}}), encoding="utf-8")
+    stamp = datetime.fromisoformat(f"{DAY}T12:00:00").timestamp()
+    os.utime(chat, (stamp, stamp))
+
+
+def test_malformed_vscode_entries_are_skipped_and_valid_ones_kept(fresh_clock):
+    def millis(hhmm):
+        return int(datetime.fromisoformat(f"{DAY}T{hhmm}:00").timestamp() * 1000)
+
+    home = fresh_clock.parent
+    add_vscode_chat(home, "w1", {"folder": "file:///C:/VS/vs-proj"},
+                    [{"timestamp": millis("11:00"), "message": {"text": "vs prompt"}},
+                     {"timestamp": millis("11:05"), "message": ["not", "an", "object"]}])
+    add_vscode_chat(home, "w2", {"folder": 5}, [{"timestamp": millis("12:00"), "message": {"text": "no folder"}}])
+    result = run_my_day(fresh_clock)
+    assert result.returncode == 0, result.stderr
+    data = json.loads((fresh_clock / "days" / f"{DAY}.json").read_text(encoding="utf-8"))
+    prompts = {p["name"]: [x[2] for x in p["prompts"]] for p in data["projects"]}
+    assert prompts["vs-proj"] == ["vs prompt"]
+    assert prompts["Other (no project folder)"] == ["no folder"]
+    assert prompts["demo-proj"] == list(PROMPTS)

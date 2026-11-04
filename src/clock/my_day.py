@@ -9,6 +9,7 @@ what you asked and what you committed.
     python -X utf8 my_day.py yesterday
 """
 import collections
+import contextlib
 import glob
 import html
 import json
@@ -38,12 +39,15 @@ def read_json(path: str, encoding: str = "utf-8") -> dict:
     try:
         with open(path, encoding=encoding) as f:
             data = json.load(f)
-        return data if isinstance(data, dict) else {}
     except FileNotFoundError:
         return {}
     except (OSError, ValueError):
         logger.warning("cannot read %s", path, exc_info=True)
         return {}
+    if not isinstance(data, dict):
+        logger.warning("%s does not hold a JSON object", path)
+        return {}
+    return data
 
 
 def read_jsonl(path: str) -> Iterator[dict]:
@@ -190,17 +194,17 @@ for f in glob.glob(os.path.join(HOME, ".copilot", "session-state", "*", "events.
 dbf = os.path.join(HOME, ".copilot", "session-store.db")
 if os.path.exists(dbf):
     try:
-        db = sqlite3.connect(f"file:{dbf}?mode=ro", uri=True)
-        sess = {i: (c, b) for i, c, b in db.execute("select id, cwd, branch from sessions")}
-        for sid, created, dur in db.execute("select session_id, created_at, duration_ms from assistant_usage_events"):
-            t, (cwd, branch) = ts(created), sess.get(sid, (None, None))
-            if add(t, project(cwd), branch, cwd) and dur:
-                add(t + timedelta(milliseconds=dur), project(cwd), branch)
-        seen = {(p, x[2][:80]) for p, v in prompts.items() for x in v}
-        for sid, msg, stamp in db.execute("select session_id, user_message, timestamp from turns"):
-            t, (cwd, branch) = ts(stamp), sess.get(sid, (None, None))
-            if t and (project(cwd), clean(msg)[:80]) not in seen:
-                ask(t, project(cwd), "Copilot", msg)
+        with contextlib.closing(sqlite3.connect(f"file:{dbf}?mode=ro", uri=True)) as db:
+            sess = {i: (c, b) for i, c, b in db.execute("select id, cwd, branch from sessions")}
+            for sid, created, dur in db.execute("select session_id, created_at, duration_ms from assistant_usage_events"):
+                t, (cwd, branch) = ts(created), sess.get(sid, (None, None))
+                if add(t, project(cwd), branch, cwd) and dur:
+                    add(t + timedelta(milliseconds=dur), project(cwd), branch)
+            seen = {(p, x[2][:80]) for p, v in prompts.items() for x in v}
+            for sid, msg, stamp in db.execute("select session_id, user_message, timestamp from turns"):
+                t, (cwd, branch) = ts(stamp), sess.get(sid, (None, None))
+                if t and (project(cwd), clean(msg)[:80]) not in seen:
+                    ask(t, project(cwd), "Copilot", msg)
     except (sqlite3.Error, TypeError, OverflowError):               # a corrupt store must not fail the day
         logger.warning("skipping the Copilot session store %s", dbf, exc_info=True)
 
@@ -212,7 +216,8 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
     proj, cwd = OTHER, None
     wj = os.path.join(os.path.dirname(os.path.dirname(f)), "workspace.json")
     if os.path.exists(wj):
-        uri = read_json(wj).get("folder") or ""
+        folder = read_json(wj).get("folder")
+        uri = folder if isinstance(folder, str) else ""
         cwd = urllib.parse.unquote(uri.replace("file:///", "")).replace("/", "\\")
         proj = project(cwd)
     reqs = {}
@@ -228,13 +233,16 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
                 reqs[k[1]][1] = v["completedAt"]
         for i, r in items:
             if isinstance(r, dict) and r.get("timestamp"):
-                reqs[i] = [r["timestamp"], (r.get("modelState") or {}).get("completedAt"), (r.get("message") or {}).get("text")]
-    for st, en, txt in reqs.values():
+                reqs[i] = [r, None]
+    for r, done in reqs.values():
         try:
+            st, en = r["timestamp"], done or (r.get("modelState") or {}).get("completedAt")
+            txt = (r.get("message") or {}).get("text")
+            txt = txt if isinstance(txt, str) else None
             a = datetime.fromtimestamp(st / 1000, timezone.utc).astimezone()
             b = datetime.fromtimestamp(en / 1000, timezone.utc).astimezone() if en else a
-        except (TypeError, ValueError, OverflowError, OSError):
-            logger.debug("skipping a request with a bad timestamp in %s", f)
+        except (AttributeError, TypeError, ValueError, OverflowError, OSError):
+            logger.debug("skipping a malformed request in %s", f)
             continue
         t = a
         while t <= b:
