@@ -23,7 +23,7 @@ from urllib.parse import parse_qs, urlparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 try:
     CONFIG = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8-sig"))
-except Exception:
+except (OSError, ValueError):                           # no config.json, or not valid JSON: defaults
     CONFIG = {}
 PORT = int(CONFIG.get("port", 8800))
 PY = os.path.join(os.path.dirname(sys.executable), "python.exe")   # pythonw has no console for the build
@@ -40,7 +40,7 @@ def search(q):
     days_dir = os.path.join(HERE, "days")
     try:
         summary = json.load(open(os.path.join(days_dir, "summary.json"), encoding="utf-8"))
-    except Exception:
+    except (OSError, ValueError):
         summary = {}
     out = []
     for f in sorted(os.listdir(days_dir), reverse=True):
@@ -49,7 +49,7 @@ def search(q):
         day = f[:10]
         try:
             d = json.load(open(os.path.join(days_dir, f), encoding="utf-8"))
-        except Exception:
+        except (OSError, ValueError):
             continue
         hits, projects = [], set()
 

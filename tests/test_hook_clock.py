@@ -53,6 +53,12 @@ def test_line_has_documented_fields(clock):
     assert "did" not in row                                            # empty extras are dropped
 
 
+def test_unreadable_tickets_file_and_transcript_give_defaults(clock, isolated_home):
+    (isolated_home / "tickets.json").write_text("{ not json", encoding="utf-8")
+    assert clock.tickets() == {}
+    assert clock.last_answer(str(isolated_home / "missing.jsonl")) == ("", "")
+
+
 def test_hook_appends_one_row(clock, isolated_home, monkeypatch):
     feed_stdin(monkeypatch, json.dumps({"cwd": str(isolated_home), "session_id": "s1234567890", "prompt": "do it"}).encode())
     clock.hook("Claude", "prompt")
@@ -72,3 +78,10 @@ def test_script_never_fails_or_prints(tmp_path):
     result = subprocess.run([sys.executable, "-X", "utf8", str(HOOK), "claude", "prompt"], input=b"\xff\xfe garbage {{{",
                             capture_output=True, cwd=tmp_path, env=home_env(tmp_path), timeout=30)
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+def test_script_error_is_logged_not_printed(tmp_path):
+    result = subprocess.run([sys.executable, "-X", "utf8", str(HOOK), "backfill", "not-a-date"],
+                            capture_output=True, cwd=tmp_path, env=home_env(tmp_path), timeout=30)
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    assert "ValueError" in (tmp_path / "clock.log").read_text(encoding="utf-8")

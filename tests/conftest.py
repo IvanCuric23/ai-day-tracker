@@ -23,6 +23,12 @@ def home_env(home: Path, **extra: str) -> dict[str, str]:
     return env
 
 
+def run_my_day(clock: Path) -> subprocess.CompletedProcess:
+    """Runs the my_day.py in `clock` for DAY; the user folder is the clock folder's parent."""
+    return subprocess.run([sys.executable, "-X", "utf8", str(clock / "my_day.py"), DAY, "--no-open"],
+                          capture_output=True, text=True, encoding="utf-8", env=home_env(clock.parent), timeout=60)
+
+
 @pytest.fixture
 def isolated_home(tmp_path, monkeypatch):
     """Points USERPROFILE, HOME, APPDATA and CLOCK_FILE at tmp_path and returns it."""
@@ -57,11 +63,10 @@ def built_day(tmp_path_factory):
     session.parent.mkdir(parents=True)
     rows = [{"type": "user", "timestamp": f"{DAY}T10:0{i * 5}:00", "cwd": "C:\\VS\\demo-proj", "gitBranch": "feature/ABC-123-x",
              "message": {"content": text}} for i, text in enumerate(PROMPTS)]
-    session.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    lines = [json.dumps(rows[0]), "this line is not json {{{", json.dumps(rows[1])]        # a bad line is skipped
+    session.write_text("\n".join(lines), encoding="utf-8")
     stamp = datetime.fromisoformat(f"{DAY}T12:00:00").timestamp()      # touched_today() filters by file mtime
     os.utime(session, (stamp, stamp))
 
-    result = subprocess.run([sys.executable, "-X", "utf8", str(clock / "my_day.py"), DAY, "--no-open"],
-                            capture_output=True, text=True, encoding="utf-8", env=home_env(home), timeout=60)
-    assert result.returncode == 0, result.stderr
+    assert run_my_day(clock).returncode == 0
     return clock, DAY

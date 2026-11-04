@@ -12,6 +12,7 @@ import collections
 import glob
 import html
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -23,14 +24,26 @@ from datetime import date, datetime, time, timedelta, timezone
 
 HOME = os.path.expanduser("~")
 HERE = os.path.dirname(os.path.abspath(__file__))
+logging.basicConfig(filename=os.path.join(HERE, "clock.log"), level=logging.WARNING,
+                    format="%(asctime)s %(levelname)s %(name)s: %(message)s", encoding="utf-8")
+logger = logging.getLogger(__name__)
+
+
+def read_json(path, encoding="utf-8"):
+    """The JSON object in a file; {} when it is missing, or unreadable (that is logged)."""
+    try:
+        with open(path, encoding=encoding) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError):
+        logger.warning("cannot read %s", path, exc_info=True)
+        return {}
 
 
 def load_config():
     """config.json next to this script (written by install.ps1); every key is optional."""
-    try:
-        return json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8-sig"))
-    except Exception:
-        return {}
+    return read_json(os.path.join(HERE, "config.json"), "utf-8-sig")
 
 
 def git_authors():
@@ -39,7 +52,7 @@ def git_authors():
     for key in ("user.name", "user.email"):
         try:
             v = subprocess.run(["git", "config", "--global", key], capture_output=True, text=True).stdout.strip()
-        except Exception:
+        except OSError:                                # git is not installed
             v = ""
         if v:
             out.append(v)
@@ -53,10 +66,7 @@ AUTHORS = CONFIG.get("authors") or git_authors()                             # w
 REPORTS_DIR = os.path.expanduser(CONFIG.get("reports_dir") or os.path.join("~", "Documents", "DailyWorkReport", "reports"))
 # branches whose name has no ticket number: one shared list with the clock hook, edit it once
 TICKETS_FILE = os.path.join(HOME, ".claude", "hooks", "tickets.json")
-try:
-    TICKETS = json.load(open(TICKETS_FILE, encoding="utf-8"))
-except Exception:
-    TICKETS = {}
+TICKETS = read_json(TICKETS_FILE)
 arg = next((a for a in sys.argv[1:] if not a.startswith("--")), "today")
 DAY = date.today() - timedelta(days=1) if arg == "yesterday" else date.today() if arg == "today" else date.fromisoformat(arg)
 T0 = datetime.combine(DAY, time()).astimezone()
@@ -66,7 +76,7 @@ T1 = T0 + timedelta(days=1)
 def ts(s):
     try:
         return datetime.fromisoformat(str(s).replace("Z", "+00:00")).astimezone()
-    except Exception:
+    except (ValueError, OverflowError, OSError):       # not a timestamp, or out of the platform's range
         return None
 
 
@@ -136,7 +146,8 @@ for f in glob.glob(os.path.join(HOME, ".claude", "projects", "*", "*.jsonl")):
     for line in open(f, encoding="utf-8", errors="ignore"):
         try:
             e = json.loads(line)
-        except Exception:
+        except ValueError:
+            logger.debug("skipping a bad line in %s", f)
             continue
         cwd, branch = e.get("cwd") or cwd, e.get("gitBranch") or branch
         t = ts(e.get("timestamp"))
@@ -156,7 +167,8 @@ for f in glob.glob(os.path.join(HOME, ".copilot", "session-state", "*", "events.
     for line in open(f, encoding="utf-8", errors="ignore"):
         try:
             e = json.loads(line)
-        except Exception:
+        except ValueError:
+            logger.debug("skipping a bad line in %s", f)
             continue
         if e.get("type") == "session.start":
             ctx = (e.get("data") or {}).get("context") or {}
@@ -195,7 +207,8 @@ for f in glob.glob(os.path.join(vsc, "workspaceStorage", "*", "chatSessions", "*
     for line in open(f, encoding="utf-8", errors="ignore"):
         try:
             e = json.loads(line)
-        except Exception:
+        except ValueError:
+            logger.debug("skipping a bad line in %s", f)
             continue
         k, v = e.get("k"), e.get("v")
         items = []
@@ -358,7 +371,8 @@ if os.path.exists(clock_file):
         try:
             c = json.loads(raw)
             t = ts(c["time"])
-        except Exception:
+        except (ValueError, KeyError, TypeError):
+            logger.debug("skipping a bad line in %s", clock_file)
             continue
         if t and T0 <= t < T1:
             by_session[(c.get("tool"), c.get("session"))].append((t, c))
@@ -384,10 +398,7 @@ COLORS_FILE = os.path.join(HERE, "days", "colors.json")
 
 
 def update_colors(summary=None):
-    try:
-        colors = json.load(open(COLORS_FILE, encoding="utf-8"))
-    except Exception:
-        colors = {}
+    colors = read_json(COLORS_FILE)
     hours = collections.Counter()
     for s in (summary or {}).values():
         for p, _, h in s["projects"]:
@@ -401,10 +412,7 @@ def update_colors(summary=None):
     return colors
 
 
-try:
-    _summary = json.load(open(os.path.join(HERE, "days", "summary.json"), encoding="utf-8"))
-except Exception:
-    _summary = {}
+_summary = read_json(os.path.join(HERE, "days", "summary.json"))
 data["colors"] = update_colors(_summary)
 data["iso"] = DAY.isoformat()
 data["jira"], data["links"] = JIRA_URL, links
@@ -446,10 +454,7 @@ def ticket_rows():
 
 
 summary_file = os.path.join(HERE, "days", "summary.json")
-try:
-    summary = json.load(open(summary_file, encoding="utf-8"))
-except Exception:
-    summary = {}
+summary = read_json(summary_file)
 hd, ha = project_hours("day"), project_hours("all")
 summary[DAY.isoformat()] = {
     "day": data["union"]["day"] / 3600, "all": data["union"]["all"] / 3600,

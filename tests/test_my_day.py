@@ -1,6 +1,7 @@
 import json
+import shutil
 
-from conftest import DAY, PROMPTS
+from conftest import DAY, PROMPTS, run_my_day
 
 
 def test_builds_day_page_and_data(built_day):
@@ -19,3 +20,14 @@ def test_summary_lists_the_day(built_day):
     summary = json.loads((clock / "days" / "summary.json").read_text(encoding="utf-8"))
     assert list(summary) == [DAY]
     assert summary[day]["projects"][0][0] == "demo-proj"
+
+
+def test_unreadable_summary_is_logged_and_rebuilt(built_day, tmp_path):
+    clock = tmp_path / "clock"
+    shutil.copytree(built_day[0], clock, ignore=shutil.ignore_patterns("days", "index.html", "clock.log"))
+    (clock / "days").mkdir()
+    (clock / "days" / "summary.json").write_text("{ not json", encoding="utf-8")
+    result = run_my_day(clock)
+    assert result.returncode == 0, result.stderr
+    assert "cannot read" in (clock / "clock.log").read_text(encoding="utf-8")
+    assert list(json.loads((clock / "days" / "summary.json").read_text(encoding="utf-8"))) == [DAY]

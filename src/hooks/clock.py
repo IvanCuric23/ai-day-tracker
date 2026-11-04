@@ -13,6 +13,7 @@ disturb the session.
 import functools
 import glob
 import json
+import logging
 import os
 import re
 import subprocess
@@ -24,13 +25,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LOG = os.environ.get("CLOCK_FILE") or os.path.join(os.path.expanduser("~"), ".claude", "clock", "clock.jsonl")
 TICKETS_FILE = os.path.join(HERE, "tickets.json")      # {"feature/my-branch": "ABC-123"}
 TEXT = 200
+logger = logging.getLogger(__name__)
 
 
 @functools.lru_cache(None)
 def tickets():
     try:
         return json.load(open(TICKETS_FILE, encoding="utf-8"))
-    except Exception:
+    except (OSError, ValueError):
         return {}
 
 
@@ -51,7 +53,7 @@ def git(cwd, *args):
         r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8",
                            errors="ignore", timeout=3)
         return r.stdout.strip() if r.returncode == 0 else ""
-    except Exception:
+    except (OSError, subprocess.SubprocessError):          # git missing, or it timed out
         return ""
 
 
@@ -74,12 +76,12 @@ def last_answer(transcript):
             f.seek(0, 2)
             f.seek(max(0, f.tell() - 400_000))
             lines = f.read().decode("utf-8", errors="ignore").splitlines()
-    except Exception:
+    except OSError:
         return "", ""
     for line in reversed(lines):
         try:
             e = json.loads(line)
-        except Exception:
+        except ValueError:
             continue
         msg = e.get("message") or {}
         if e.get("type") == "assistant" and isinstance(msg.get("content"), list):
@@ -109,7 +111,7 @@ def hook(tool, event):
     raw = sys.stdin.buffer.read().decode("utf-8-sig", errors="replace") if not sys.stdin.isatty() else ""
     try:
         data = json.loads(raw) if raw.strip() else {}
-    except Exception:
+    except ValueError:
         data = {}
     cwd = data.get("cwd") or os.getcwd()
     # Copilot may send no session id: one id per tool + folder keeps its lines together
@@ -142,7 +144,8 @@ def backfill(day):
             try:
                 e = json.loads(raw)
                 t = datetime.fromisoformat(e["timestamp"].replace("Z", "+00:00")).astimezone()
-            except Exception:
+            except Exception:                              # bad JSON, shape or timestamp: skip the line
+                logger.debug("backfill: skipping a line of %s", f, exc_info=True)
                 continue
             if not (start <= t < end) or e.get("isSidechain") or e.get("isMeta"):
                 continue
@@ -176,10 +179,20 @@ def backfill(day):
 
 if __name__ == "__main__":
     try:
+        try:
+            os.makedirs(os.path.dirname(LOG), exist_ok=True)
+            logging.raiseExceptions = False                # a hook must not print, not even a logging error
+            logging.basicConfig(filename=os.path.join(os.path.dirname(LOG), "clock.log"), level=logging.WARNING,
+                                format="%(asctime)s %(levelname)s %(name)s: %(message)s", encoding="utf-8")
+        except Exception:
+            logging.getLogger().addHandler(logging.NullHandler())   # no log file: stay silent
         if len(sys.argv) > 2 and sys.argv[1] == "backfill":
             backfill(sys.argv[2])
         elif len(sys.argv) > 2:
             hook(sys.argv[1].capitalize() if sys.argv[1] != "copilot" else "Copilot", sys.argv[2])
-    except Exception:
-        pass                                           # a broken clock must never break the session
+    except Exception:                                  # a broken clock must never break the session
+        try:
+            logger.exception("clock hook failed")
+        except Exception:
+            pass
     sys.exit(0)
