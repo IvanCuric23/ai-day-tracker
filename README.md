@@ -107,3 +107,7 @@ python -m venv .venv
 ```
 
 Tests use invented data in a temporary folder and never read your real Claude Code or Copilot history.
+
+## License
+
+[MIT](LICENSE): free to use, copy, change and share, also at work. Keep the licence notice; there is no warranty.
