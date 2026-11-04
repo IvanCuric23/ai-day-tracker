@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+    --night: #efede7; --chip: #f1efe9; --accent: #2f6fdb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #1f1f1d; --ink: #ecebe6; --muted: #9b9a94; --line: #33322f;
+            --night: #1a1a19; --chip: #2a2a27; --accent: #7aa7ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 15px; font-weight: 600; color: var(--muted); margin: 0 0 4px; }
+  .total { font-size: 40px; font-weight: 700; letter-spacing: -.02em; }
+  .total small { font-size: 16px; font-weight: 500; color: var(--muted); margin-left: 8px; }
+  .head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .toggle { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; cursor: pointer; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; }
+
+  /* timeline */
+  .tl-row { display: grid; grid-template-columns: 190px 1fr; align-items: center; gap: 10px; height: 26px; }
+  .tl-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track { position: relative; height: 16px; border-radius: 4px; overflow: hidden;
+           background: linear-gradient(to right, var(--night) 0 var(--df), transparent var(--df) var(--dt), var(--night) var(--dt)); }
+  .seg { position: absolute; top: 0; bottom: 0; border-radius: 3px; min-width: 3px; }
+  .axis { display: grid; grid-template-columns: 190px 1fr; gap: 10px; margin-top: 4px; }
+  .ticks { position: relative; height: 16px; font-size: 11px; color: var(--muted); }
+  .ticks span { position: absolute; transform: translateX(-50%); }
+
+  /* bars */
+  .bar-row { display: grid; grid-template-columns: 190px 1fr 70px; gap: 10px; align-items: center; margin: 6px 0; font-size: 14px; }
+  .bar { height: 12px; border-radius: 6px; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* project cards */
+  .p-head { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .p-name { font-weight: 650; font-size: 16px; flex: 1; }
+  .p-hours { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tickets { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+  .chip { background: var(--chip); border-radius: 8px; padding: 6px 10px; display: flex; gap: 10px; align-items: center; font-size: 14px; }
+  .chip b { font-variant-numeric: tabular-nums; }
+  .chip .br { color: var(--muted); font-size: 12px; }
+  .chip.none { border: 1px dashed var(--muted); background: transparent; }
+  button { font: inherit; font-size: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  details { margin-top: 8px; font-size: 14px; }
+  summary { cursor: pointer; color: var(--muted); }
+  ul { margin: 6px 0 0; padding-left: 0; list-style: none; }
+  li { padding: 3px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 48px 1fr; gap: 8px; }
+  li .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tool { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-right: 4px; }
+  code { font-size: 12px; color: var(--muted); }
+  .note { color: var(--muted); font-size: 13px; }
+  .worklog { border-color: var(--accent); scroll-margin-top: 12px; }
+  #wlslot { scroll-margin-top: 12px; }
+  a.tl { color: var(--accent); text-decoration: none; font-weight: 650; }
+  a.tl:hover { text-decoration: underline; }
+  .jump { font-size: 13px; padding: 4px 12px; border-color: var(--accent); color: var(--accent); }
+  .worklog h3 { font-size: 16px; margin: 0 0 10px; }
+  .worklog h4 { font-size: 14px; margin: 16px 0 6px; }
+  .worklog p { margin: 6px 0; font-size: 14px; }
+  table.wl td { white-space: normal; vertical-align: top; }
+  table.wl td.txt { min-width: 320px; }
+  table.wl td.q { color: #d1495b; font-weight: 700; }
+  table.wl button { display: block; margin: 2px 0; white-space: nowrap; }
+  ul.md { margin: 4px 0; font-size: 14px; }
+  ul.md li { display: list-item; list-style: disc; margin-left: 18px; border: 0; padding: 1px 0; }
+  ul.md li.d1 { margin-left: 36px; list-style: circle; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tr.steps td { white-space: normal; background: var(--chip); }
+  @media (max-width: 640px) {
+    .tl-row, .axis { grid-template-columns: 100px 1fr; }
+    .bar-row { grid-template-columns: 100px 1fr 60px; }
+  }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const D = /*DATA*/null;
+const COLORS = ["#2f6fdb", "#e07b39", "#2a9d6f", "#c2477a", "#8a63d2", "#c9a227", "#3aa6b9", "#d1495b", "#6c8e3c", "#7f7f7f"];
+const colorOf = n => (D.colors && D.colors[n]) || COLORS[[...n].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+let mode = "day";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hm = h => { const m = Math.round(h * 60); return (m >= 60 ? Math.floor(m / 60) + "h " : "") + (m % 60 || m < 60 ? (m % 60) + "m" : "").trim(); };
+const jira = h => { const m = Math.max(15, Math.round(h * 4) * 15); return ((m >= 60 ? Math.floor(m / 60) + "h " : "") + (m % 60 ? (m % 60) + "m" : "")).trim(); };
+
+function render() {
+  const rowsSum = D.projects.reduce((a, p) => a + p.rows.reduce((b, r) => b + r[mode], 0), 0) || 1;
+  const k = D.union[mode] / rowsSum / 3600;                 // parallel sessions counted once
+  const projects = D.projects.map((p, i) => ({ ...p, color: colorOf(p.name),
+      rows: p.rows.map(r => ({ ...r, h: r[mode] * k })).filter(r => r.h >= 1 / 60) }))
+    .map(p => ({ ...p, h: p.rows.reduce((a, r) => a + r.h, 0) }))
+    .filter(p => p.h > 0 || mode === "all")
+    .sort((a, b) => b.h - a.h);
+  const total = D.union[mode] / 3600, night = (D.union.all - D.union.day) / 3600, max = Math.max(...projects.map(p => p.h), 0.01);
+  const pct = m => (m / 1440 * 100) + "%";
+
+  let h = `<div class="head"><div><h1>${esc(D.date)}</h1>
+      <div class="total">${hm(total)}<small>with AI · ${projects.length} projects</small></div></div>
+    <label class="toggle"><input type="checkbox" id="dayOnly" ${mode === "day" ? "checked" : ""}>
+      Only ${D.dayFrom}:00–${D.dayTo}:00 ${night > 0.05 ? `(hides ${hm(night)} at night)` : ""}</label>
+    ${WL ? `<button class="jump" id="toWl" title="Jump to the work log">📝 Work log ↓</button>` : ""}</div>`;
+
+  h += `<section class="card"><h2>When</h2>`;
+  for (const p of projects)
+    h += `<div class="tl-row"><div class="tl-name" title="${esc(p.name)}">${esc(p.name)}</div>
+      <div class="track" style="--df:${pct(D.dayFrom * 60)};--dt:${pct(D.dayTo * 60)}">${p.segments.map(([a, b]) =>
+        `<div class="seg" title="${fmt(a)}–${fmt(b)}" style="left:${pct(a)};width:${pct(b - a)};background:${p.color}"></div>`).join("")}</div></div>`;
+  h += `<div class="axis"><div></div><div class="ticks">${[0, 3, 6, 9, 12, 15, 18, 21, 24].map(x =>
+      `<span style="left:${pct(x * 60)}">${String(x).padStart(2, "0")}</span>`).join("")}</div></div>
+      <p class="note">Shaded = outside working hours. Hover a block to see the time.</p></section>`;
+
+  h += `<section class="card"><h2>Where the time went</h2>`;
+  for (const p of projects)
+    h += `<div class="bar-row"><div class="tl-name">${esc(p.name)}</div>
+      <div><div class="bar" style="width:${p.h / max * 100}%;background:${p.color}"></div></div><div class="num">${hm(p.h)}</div></div>`;
+  h += `</section>`;
+
+  if (D.clock && D.clock.length) {
+    const ICON = { start: "▶", prompt: "you", stop: "AI", end: "■" };
+    h += `<section class="card"><h2>Sessions — clock (start → stop)</h2><div class="scroll"><table>
+      <tr><th>Start</th><th>End</th><th>Active</th><th>Tool</th><th>Project</th><th>Branch</th><th>Ticket</th><th></th></tr>`;
+    D.clock.forEach((s, i) => {
+      h += `<tr><td>${s.start}</td><td>${s.end}</td><td class="num">${hm(s.active)}</td><td>${esc(s.tool)}</td>
+        <td>${esc(s.project)}</td><td><code>${esc(s.branch)}</code></td>
+        <td>${s.ticket ? `<b>${tlink(s.ticket, s.project)}</b>` : `<span class="note">—</span>`}</td>
+        <td>${s.steps.length ? `<button data-open="${i}">Steps (${s.steps.length})</button>` : ""}</td></tr>
+        <tr class="steps" id="steps-${i}" hidden><td colspan="8"><ul>${s.steps.map(([t, ev, x]) =>
+          `<li><span class="t">${t}</span><span><span class="tool">${ICON[ev] || ev}</span>${esc(x)}</span></li>`).join("")}</ul></td></tr>`;
+    });
+    h += `</table></div></section>`;
+  }
+
+  h += `<div id="wlslot">${WL}</div>`;
+
+  for (const p of projects) {
+    h += `<section class="card"><div class="p-head"><span class="dot" style="background:${p.color}"></span>
+      <span class="p-name">${esc(p.name)}</span><span class="p-hours">${hm(p.h)}</span></div><div class="tickets">`;
+    for (const r of p.rows) {
+      h += `<div class="chip ${r.ticket ? "" : "none"}"><span>${r.ticket ? tlink(r.ticket, p.name) : "no ticket"}</span><b title="rounded to 15 min for Jira">Jira ${jira(r.h)}</b>
+        <span class="br">${esc(r.branches.join(", "))}</span>
+        <button data-copy="${esc((r.ticket ? r.ticket + " " : "") + jira(r.h))}">Copy</button></div>`;
+    }
+    h += `</div>`;
+    if (p.commits.length)
+      h += `<details><summary>What you committed (${p.commits.length})</summary><ul>${p.commits.map(([t, sha, s]) =>
+        `<li><span class="t">${esc(t)}</span><span>${esc(s)} <code>${esc(sha)}</code></span></li>`).join("")}</ul></details>`;
+    if (p.prompts.length)
+      h += `<details><summary>What you asked the AI (${p.prompts.length})</summary><ul>${p.prompts.map(([t, tool, s]) =>
+        `<li><span class="t">${esc(t)}</span><span><span class="tool">${esc(tool)}</span>${esc(s)}</span></li>`).join("")}</ul></details>`;
+    h += `</section>`;
+  }
+  h += `<p class="note">Time = AI session activity (Claude Code, Copilot, VS Code chat); gaps over 10 min count as away.
+    Sessions running in parallel are counted once and split by activity. Jira times are rounded to 15 min.</p>`;
+  document.getElementById("app").innerHTML = h;
+  document.getElementById("dayOnly").onchange = e => { mode = e.target.checked ? "day" : "all"; render(); };
+  const jb = document.getElementById("toWl");
+  if (jb) jb.onclick = () => document.getElementById("wlslot").scrollIntoView({ behavior: "smooth", block: "start" });
+  document.querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+    const r = document.getElementById("steps-" + b.dataset.open); r.hidden = !r.hidden;
+  });
+  document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
+    navigator.clipboard.writeText(b.dataset.copy).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1200); });
+  });
+}
+// ---- work log: your 17:00 report (Documents\DailyWorkReport), read live from the server, else the saved copy
+let WL = "";
+function inline(t) {
+  return esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+}
+function mdToHtml(md) {
+  const L = md.replace(/\r/g, "").split("\n"), out = [];
+  let i = 0, copyCol = -1;
+  const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+  while (i < L.length) {
+    const l = L[i];
+    if (/^\s*\|/.test(l) && i + 1 < L.length && /^\s*\|[\s:|-]+\|\s*$/.test(L[i + 1])) {
+      const head = cells(l); copyCol = head.findIndex(c => /work-log text|text/i.test(c));
+      const tk = head.findIndex(c => /^ticket$/i.test(c)), pj = head.findIndex(c => /^project$/i.test(c));
+      let t = `<div class="scroll"><table class="wl"><tr>${head.map(c => `<th>${inline(c)}</th>`).join("")}${copyCol >= 0 ? "<th></th>" : ""}</tr>`;
+      i += 2;
+      while (i < L.length && /^\s*\|/.test(L[i])) {
+        const c = cells(L[i]);
+        const copy = copyCol >= 0 ? `<td><button data-copy="${esc(c[copyCol] || "")}" title="Copy the work-log text">Copy text</button>${
+          tk >= 0 && c[tk] && c[tk] !== "?" ? `<button data-copy="${esc(c[tk])}" title="Copy the ticket">Copy ticket</button>` : ""}</td>` : "";
+        t += `<tr>${c.map((x, j) => `<td class="${j === copyCol ? "txt" : ""}${x === "?" ? " q" : ""}">${
+          j === tk && x !== "?" ? tlink(x, pj >= 0 ? c[pj] : "") : inline(x)}</td>`).join("")}${copy}</tr>`;
+        i++;
+      }
+      out.push(t + "</table></div>");
+      continue;
+    }
+    let m;
+    if ((m = l.match(/^(#{1,3})\s+(.*)/))) out.push(m[1].length === 1 ? `<h3>${inline(m[2])}</h3>` : `<h4>${inline(m[2])}</h4>`);
+    else if (/^\s*[-*]\s+/.test(l)) {
+      const items = [];
+      while (i < L.length && (/^\s*[-*]\s+/.test(L[i]) || (/^\s{2,}\S/.test(L[i]) && !/^\s*\|/.test(L[i])))) {
+        const depth = (L[i].match(/^\s*/)[0].length >= 2) ? 1 : 0;
+        items.push(`<li class="d${depth}">${inline(L[i].replace(/^\s*[-*]?\s*/, ""))}</li>`); i++;
+      }
+      out.push(`<ul class="md">${items.join("")}</ul>`); continue;
+    }
+    else if (l.trim()) out.push(`<p>${inline(l)}</p>`);
+    i++;
+  }
+  return out.join("");
+}
+function showWorklog(md) {
+  WL = md ? `<section class="card worklog"><h2>Work log — paste into Jira / DevOps</h2>${mdToHtml(md)}</section>` : "";
+  render();
+}
+async function loadWorklog() {
+  if (location.protocol.startsWith("http")) {
+    try {
+      const r = await fetch("/worklog/" + D.iso);
+      if (r.ok) return showWorklog((await r.json()).md);
+    } catch (e) {}
+  }
+  if (D.worklog) showWorklog(D.worklog);
+}
+// ticket -> link: Jira key -> Jira; a number -> the Azure DevOps project of that repo (from its git remote)
+function devopsBase(project) {
+  const L = D.links || {};
+  if (L[project]) return L[project];
+  const hit = Object.keys(L).find(k => project && (project.startsWith(k) || k.startsWith(project.split(/[ (,]/)[0])));
+  if (hit) return L[hit];
+  const all = [...new Set(Object.values(L))];
+  return all.length === 1 ? all[0] : "";
+}
+function tlink(t, project) {
+  t = String(t || "").trim();
+  if (D.jira && /^[A-Z][A-Z0-9]+-\d+$/.test(t))
+    return `<a class="tl" href="${esc(D.jira + t)}" target="_blank" title="Open in Jira">${esc(t)} ↗</a>`;
+  const n = (t.match(/^(?:DevOps\s*)?#?(\d+)$/) || [])[1], base = n && devopsBase(project);
+  if (base) return `<a class="tl" href="${esc(base + n)}" target="_blank" title="Open in Azure DevOps">#${esc(n)} ↗</a>`;
+  return esc(n ? "#" + n : t);
+}
+function fmt(m) { m = Math.round(m); return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
+render();
+loadWorklog();
+</script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My AI calendar</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+    --work: #e9eef7; --weekend: #ece9e2; --empty: #f3f2ee; --accent: #2f6fdb; --sel: #1f3f8f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #1f1f1d; --ink: #ecebe6; --muted: #9b9a94; --line: #33322f;
+            --work: #233247; --weekend: #2b2824; --empty: #1c1c1b; --accent: #7aa7ff; --sel: #3b4f9e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: minmax(520px, 640px) 1fr; gap: 16px; padding: 16px; height: 100vh; }
+  .left { overflow: auto; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .bar h1 { font-size: 22px; margin: 0 auto 0 0; }
+  button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  .stats { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 10px; flex-wrap: wrap; }
+  .stats b { color: var(--ink); font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr) 28px; gap: 4px; }
+  .cell { border-radius: 8px; padding: 6px 8px 8px; min-height: 86px; background: var(--empty); cursor: default;
+          display: flex; flex-direction: column; border: 2px solid transparent; position: relative; }
+  .cell.has { background: var(--work); cursor: pointer; }
+  .cell.we { background: var(--weekend); }
+  .cell.out { opacity: .38; }
+  .cell.today { border-color: var(--accent); }
+  .cell.sel { border-color: var(--sel); box-shadow: 0 0 0 2px var(--sel) inset; }
+  .cell.has:hover { border-color: var(--accent); }
+  .wd { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+  .log { font-size: 12px; }
+  .dn { font-size: 26px; line-height: 1.1; font-weight: 300; }
+  .h { margin-top: auto; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .mix { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .wk { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; color: var(--muted);
+        display: flex; align-items: center; justify-content: center; }
+  .legend { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .lhint { width: 100%; }
+  .lp { border: 1px solid var(--line); border-radius: 14px; padding: 2px 10px; font-size: 12px; color: var(--ink); background: var(--card); }
+  .lp b { font-variant-numeric: tabular-nums; }
+  .lp.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .lp.off { opacity: .45; }
+  .cell.dim { opacity: .35; }
+  .only { display: flex; gap: 6px; align-items: center; }
+  .only i, .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .right { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .rhead { padding: 8px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .rhead a { color: var(--accent); margin-left: auto; }
+  iframe { border: 0; width: 100%; flex: 1; background: var(--bg); }
+  .none { padding: 24px; color: var(--muted); }
+  #panel { padding: 16px 18px; overflow: auto; flex: 1; }
+  #panel h2 { font-size: 18px; margin: 0 0 4px; }
+  #panel .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  #panel table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  #panel th { text-align: right; font-size: 12px; color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  #panel th:first-child, #panel td:first-child { text-align: left; }
+  #panel td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+  #panel tr.tot td { font-weight: 700; border-top: 2px solid var(--line); }
+  #panel td.z { color: var(--muted); }
+  #panel .tk { font-weight: 650; }
+  #panel .pj { color: var(--muted); font-size: 12px; }
+  .res { border-bottom: 1px solid var(--line); padding: 8px 0; cursor: pointer; }
+  .res:hover { background: var(--work); }
+  .res .d { font-weight: 650; }
+  .res .k { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-right: 6px; }
+  .res .t { font-size: 13px; margin-top: 2px; }
+  .search { display: flex; gap: 6px; margin-bottom: 10px; }
+  .search input { flex: 1; font: inherit; font-size: 14px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
+                  background: var(--card); color: var(--ink); }
+  .wk { cursor: pointer; }
+  .wk:hover { color: var(--accent); }
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; height: auto; }
+    .right { min-height: 80vh; }
+    .cell { min-height: 64px; padding: 4px 6px; }
+    .dn { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="left" id="cal"></div>
+  <div class="right">
+    <div class="rhead"><span id="title">Pick a day</span><a id="open" href="#" target="_blank">Open in new tab ↗</a></div>
+    <div id="panel" hidden></div>
+    <iframe id="day" title="Day details"></iframe>
+  </div>
+</div>
+<script>
+const S = /*SUMMARY*/null;
+const C = /*COLORS*/null;
+const COLORS = ["#2f6fdb", "#e07b39", "#2a9d6f", "#c2477a", "#8a63d2", "#c9a227", "#3aa6b9", "#d1495b", "#6c8e3c", "#7f7f7f"];
+const colorOf = n => (C && C[n]) || COLORS[[...n].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % COLORS.length];
+const WD = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const hm = h => { const m = Math.round(h * 60); return m < 60 ? m + "m" : Math.floor(m / 60) + "h " + (m % 60 ? (m % 60) + "m" : ""); };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function week(d) {                                   // ISO week number
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  return Math.ceil(((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+}
+const days = Object.keys(S).sort();
+let sel = location.hash.slice(1) || days[days.length - 1] || iso(new Date());
+let month = new Date(sel + "T12:00"); month.setDate(1);
+let mode = "day";
+let LOGS = new Set(Object.keys(S).filter(k => S[k].log));   // days with a 17:00 work-log report
+let only = null;                                  // project picked in the totals: show only its hours
+const ph = p => mode === "day" ? p[1] : p[2];
+const hoursOf = s => !s ? 0 : only ? (s.projects.find(p => p[0] === only) || [0, 0, 0])[mode === "day" ? 1 : 2] : s[mode];
+
+function render() {
+  const y = month.getFullYear(), m = month.getMonth();
+  const first = new Date(y, m, 1), start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7));
+  const last = new Date(y, m + 1, 0), end = new Date(last); end.setDate(last.getDate() + (7 - ((last.getDay() + 6) % 7)) - 1);
+  const today = iso(new Date());
+  let total = 0, worked = 0;
+  const projTotal = {};
+  for (const [d, s] of Object.entries(S)) {
+    const dt = new Date(d + "T12:00");
+    if (dt.getMonth() !== m || dt.getFullYear() !== y) continue;
+    const v = hoursOf(s); total += v; if (v > 0.05) worked++;
+    for (const p of s.projects) projTotal[p[0]] = (projTotal[p[0]] || 0) + ph(p);
+  }
+  let h = `<div class="bar"><h1>${month.toLocaleString("en-GB", { month: "long", year: "numeric" })}</h1>
+    <button id="prev">‹</button><button id="now">Today</button><button id="next">›</button>
+    ${location.protocol.startsWith("http") ? `<button id="refresh" title="Rebuild today from your sessions (~10 s)">⟳ Refresh today</button>` : ""}</div>
+    ${location.protocol.startsWith("http") ? `<form class="search" id="sform"><input id="q" placeholder="Search all days: ticket, branch, DPD, consignment…" value="${esc(lastQ)}"><button>Search</button></form>` : ""}
+    <div class="stats">${only ? `<span class="only"><i style="background:${colorOf(only)}"></i><b>${esc(only)}</b>
+      <button id="clear" title="Show all projects again">× all projects</button></span>` : ""}
+    <span><b>${hm(total)}</b> ${only ? "on it" : "with AI"} this month</span><span><b>${worked}</b> days</span><span>📝 = work log ready</span>
+    <label><input type="checkbox" id="dayOnly" ${mode === "day" ? "checked" : ""}> only 7:00–19:00</label></div><div class="grid">`;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const k = iso(d), s = S[k], dow = (d.getDay() + 6) % 7, hrs = hoursOf(s);
+    const cls = ["cell", s && hrs > 0.01 ? "has" : "", s && only && hrs <= 0.01 && s[mode] > 0.01 ? "has dim" : "",
+                 dow > 4 ? "we" : "", d.getMonth() !== m ? "out" : "",
+                 k === today ? "today" : "", k === sel ? "sel" : ""].join(" ");
+    const sum = s ? s.projects.reduce((a, p) => a + (mode === "day" ? p[1] : p[2]), 0) || 1 : 1;
+    const tip = s ? s.projects.slice(0, 6).map(p => `${p[0]}: ${hm(mode === "day" ? p[1] : p[2])}`).join("\n") : "";
+    h += `<div class="${cls}" data-day="${k}" title="${esc(tip)}"><span class="wd">${WD[dow]}${LOGS.has(k) ? `<span class="log" title="Work log ready">📝</span>` : ""}</span><span class="dn">${d.getDate()}</span>
+      ${s && hrs > 0.01 ? `<span class="h">${hm(hrs)}</span><span class="mix">${s.projects.filter(p => !only || p[0] === only).map(p =>
+        `<span style="width:${only ? 100 : ph(p) / sum * 100}%;background:${colorOf(p[0])}"></span>`).join("")}</span>` : ""}</div>`;
+    if (dow === 6) { const mon = new Date(d); mon.setDate(d.getDate() - 6);
+      h += `<div class="wk" data-mon="${iso(mon)}" title="Hours per ticket for this week">Week ${week(d)}</div>`; }
+  }
+  h += `</div><div class="legend"><span class="lhint">This month per project — click one to see only its days:</span>${Object.entries(projTotal).sort((a, b) => b[1] - a[1]).map(([p, v]) =>
+    `<button class="lp ${only === p ? "on" : only ? "off" : ""}" data-p="${esc(p)}"><i style="background:${colorOf(p)}"></i>${esc(p)} <b>${hm(v)}</b></button>`).join("")}</div>`;
+  document.getElementById("cal").innerHTML = h;
+  document.getElementById("prev").onclick = () => { month.setMonth(month.getMonth() - 1); render(); };
+  document.getElementById("next").onclick = () => { month.setMonth(month.getMonth() + 1); render(); };
+  document.getElementById("now").onclick = () => { month = new Date(); month.setDate(1); pick(iso(new Date())); };
+  document.getElementById("dayOnly").onchange = e => { mode = e.target.checked ? "day" : "all"; render(); };
+  document.querySelectorAll(".wk[data-mon]").forEach(w => w.onclick = () => showWeek(w.dataset.mon));
+  const sf = document.getElementById("sform");
+  if (sf) sf.onsubmit = e => { e.preventDefault(); runSearch(document.getElementById("q").value); };
+  document.querySelectorAll(".lp").forEach(b => b.onclick = () => { only = only === b.dataset.p ? null : b.dataset.p; render(); });
+  const cl = document.getElementById("clear"); if (cl) cl.onclick = () => { only = null; render(); };
+  const rb = document.getElementById("refresh");
+  if (rb) rb.onclick = async () => {
+    rb.disabled = true; rb.textContent = "Refreshing…";
+    try {
+      const r = await fetch("/refresh", { method: "POST" });
+      if (!r.ok) throw new Error((await r.json()).out);
+      location.hash = iso(new Date()); location.reload();
+    } catch (e) { rb.textContent = "Refresh failed"; rb.title = String(e.message || e); rb.disabled = false; }
+  };
+  document.querySelectorAll(".cell.has").forEach(c => c.onclick = () => pick(c.dataset.day));
+}
+let lastQ = "";
+function panel(html) {
+  const p = document.getElementById("panel"), f = document.getElementById("day");
+  p.hidden = !html; f.style.display = html ? "none" : ""; if (html) p.innerHTML = html;
+  document.getElementById("open").style.display = html ? "none" : "";
+}
+// week view: one row per ticket (or project when there is no ticket), one column per day
+function showWeek(mon) {
+  const days = [...Array(7)].map((_, i) => { const d = new Date(mon + "T12:00"); d.setDate(d.getDate() + i); return iso(d); });
+  const rows = {};
+  days.forEach((k, i) => (S[k]?.rows || []).forEach(([p, tk, hd, ha]) => {
+    const key = (tk || "no ticket") + "|" + p;
+    (rows[key] = rows[key] || { tk, p, h: Array(7).fill(0) }).h[i] += mode === "day" ? hd : ha;
+  }));
+  const list = Object.values(rows).map(r => ({ ...r, t: r.h.reduce((a, b) => a + b, 0) })).filter(r => r.t > 0.01).sort((a, b) => b.t - a.t);
+  const col = days.map((_, i) => list.reduce((a, r) => a + r.h[i], 0)), all = col.reduce((a, b) => a + b, 0);
+  const cell = h => h > 0.01 ? hm(h) : "";
+  const d0 = new Date(mon + "T12:00");
+  document.getElementById("title").textContent = `Week ${week(d0)} · hours per ticket`;
+  panel(`<h2>Week ${week(d0)}</h2><div class="sub">${days[0].slice(8)}.${days[0].slice(5, 7)}. – ${days[6].slice(8)}.${days[6].slice(5, 7)}. ·
+    ${hm(all)} ${mode === "day" ? "between 7:00 and 19:00" : "incl. night"} · click a column header to open that day</div>
+    <div class="scroll"><table><tr><th>Ticket / project</th>${days.map((k, i) => `<th data-day="${k}" style="cursor:pointer">${WD[i].slice(0, 3)} ${k.slice(8)}.</th>`).join("")}<th>Total</th></tr>
+    ${list.map(r => `<tr><td><span class="tk">${esc(r.tk ? (/^\d+$/.test(r.tk) ? "#" + r.tk : r.tk) : "no ticket")}</span><br><span class="pj">${esc(r.p)}</span></td>
+      ${r.h.map(h => `<td class="${h > 0.01 ? "" : "z"}">${cell(h)}</td>`).join("")}<td><b>${hm(r.t)}</b></td></tr>`).join("")}
+    <tr class="tot"><td>Total</td>${col.map(h => `<td>${cell(h)}</td>`).join("")}<td>${hm(all)}</td></tr></table></div>
+    ${list.length ? "" : `<p class="sub">No AI work recorded this week.</p>`}`);
+  document.querySelectorAll("#panel th[data-day]").forEach(t => t.onclick = () => pick(t.dataset.day));
+}
+async function runSearch(q) {
+  lastQ = q.trim(); if (lastQ.length < 2) return;
+  document.getElementById("title").textContent = `Search: ${lastQ}`;
+  panel(`<p class="sub">Searching…</p>`);
+  const r = await (await fetch("/search?q=" + encodeURIComponent(lastQ))).json();
+  const total = r.reduce((a, x) => a + x.hours, 0);
+  panel(`<h2>“${esc(lastQ)}”</h2><div class="sub">${r.length} days · ${hm(total)} on the matching projects (7:00–19:00) · click a day to open it</div>
+    ${r.map(x => `<div class="res" data-day="${x.day}"><span class="d">${new Date(x.day + "T12:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "2-digit" })}</span>
+      · ${hm(x.hours)}${x.hits.map(h => `<div class="t"><span class="k">${esc(h.kind)}</span>${esc(h.project)} — ${esc(h.text)}</div>`).join("")}</div>`).join("")}`);
+  document.querySelectorAll(".res").forEach(e => e.onclick = () => pick(e.dataset.day));
+}
+function pick(k) {
+  panel("");
+  const dk = new Date(k + "T12:00"); if (dk.getMonth() !== month.getMonth() || dk.getFullYear() !== month.getFullYear()) { month = dk; month.setDate(1); }
+  sel = k; history.replaceState(null, "", "#" + k); render();
+  const s = S[k], url = `days/my-day-${k}.html`;
+  document.getElementById("title").textContent = s
+    ? `${new Date(k + "T12:00").toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })} · built ${s.built}`
+    : "No AI work recorded on this day";
+  document.getElementById("open").href = url;
+  document.getElementById("day").src = s ? url : "about:blank";
+}
+pick(sel);
+if (location.protocol.startsWith("http"))                 // reports written after the 17:00 build still show on F5
+  fetch("/worklogs").then(r => r.json()).then(d => { LOGS = new Set([...LOGS, ...d]); render(); }).catch(() => {});
+</script>
+</body>
+</html>
