@@ -53,7 +53,7 @@ def git(cwd: str, *args: str) -> str:
         r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8",
                            errors="ignore", timeout=3)
         return r.stdout.strip() if r.returncode == 0 else ""
-    except (OSError, subprocess.SubprocessError):          # git missing, or it timed out
+    except (OSError, ValueError, subprocess.SubprocessError):   # git missing, bad cwd (NUL), or it timed out
         return ""
 
 

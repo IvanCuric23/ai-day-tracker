@@ -67,11 +67,16 @@ def test_hook_appends_one_row(clock, isolated_home, monkeypatch):
     assert (rows[0]["event"], rows[0]["session"], rows[0]["ask"]) == ("prompt", "s1234567", "do it")
 
 
-def test_hook_with_invalid_stdin_raises_and_prints_nothing(clock, monkeypatch, capsys):
+def test_hook_with_invalid_stdin_still_writes_a_row_and_prints_nothing(clock, isolated_home, monkeypatch, capsys):
     feed_stdin(monkeypatch, b"not json {{{")
     clock.hook("Claude", "prompt")
     out = capsys.readouterr()
     assert (out.out, out.err) == ("", "")
+    assert len((isolated_home / "clock.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_git_with_nul_in_cwd_returns_empty(clock):
+    assert clock.git("bad\0dir", "status") == ""
 
 
 def test_script_never_fails_or_prints(tmp_path):
@@ -85,3 +90,12 @@ def test_script_error_is_logged_not_printed(tmp_path):
                             capture_output=True, cwd=tmp_path, env=home_env(tmp_path), timeout=30)
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
     assert "ValueError" in (tmp_path / "clock.log").read_text(encoding="utf-8")
+
+
+def test_script_stays_silent_when_log_folder_cannot_be_created(tmp_path):
+    blocker = tmp_path / "blocker"
+    blocker.write_text("a file, so its child folder cannot be made", encoding="utf-8")
+    env = home_env(tmp_path, CLOCK_FILE=str(blocker / "clock.jsonl"))
+    result = subprocess.run([sys.executable, "-X", "utf8", str(HOOK), "backfill", "not-a-date"], input=b"",
+                            capture_output=True, cwd=tmp_path, env=env, timeout=30)
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")

@@ -53,11 +53,11 @@ def search(q: str) -> list[dict]:
             continue
         hits, projects = [], set()
 
-        def hit(kind: str, proj: str, text: object, hits: list = hits, projects: set = projects) -> None:
+        def hit(kind: str, proj: str, text: object) -> None:
             if q in str(text).lower():
-                projects.add(proj)
-                if len(hits) < 6:
-                    hits.append({"kind": kind, "project": proj, "text": str(text)[:160]})
+                projects.add(proj)  # noqa: B023 - hit() runs only within the iteration that defines it
+                if len(hits) < 6:  # noqa: B023
+                    hits.append({"kind": kind, "project": proj, "text": str(text)[:160]})  # noqa: B023
 
         for p in d.get("projects", []):
             hit("project", p["name"], p["name"])

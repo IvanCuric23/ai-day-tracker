@@ -24,8 +24,11 @@ from datetime import date, datetime, time, timedelta, timezone
 
 HOME = os.path.expanduser("~")
 HERE = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(filename=os.path.join(HERE, "clock.log"), level=logging.WARNING,
-                    format="%(asctime)s %(levelname)s %(name)s: %(message)s", encoding="utf-8")
+try:
+    logging.basicConfig(filename=os.path.join(HERE, "clock.log"), level=logging.WARNING,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s", encoding="utf-8")
+except OSError:                                        # log file locked or unwritable: build without it
+    logging.getLogger().addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 

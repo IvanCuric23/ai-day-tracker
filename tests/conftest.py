@@ -68,5 +68,6 @@ def built_day(tmp_path_factory):
     stamp = datetime.fromisoformat(f"{DAY}T12:00:00").timestamp()      # touched_today() filters by file mtime
     os.utime(session, (stamp, stamp))
 
-    assert run_my_day(clock).returncode == 0
+    result = run_my_day(clock)
+    assert result.returncode == 0, result.stderr
     return clock, DAY
