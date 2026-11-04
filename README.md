@@ -6,7 +6,15 @@ Tracks your Claude Code and GitHub Copilot sessions and builds a local dashboard
 - **Calculates once a day at 17:00** (Mon–Fri), and anytime you click **⟳ Refresh today**.
 - **Everything stays on your PC.** Nothing is uploaded, and the dashboard only answers on `localhost`.
 
-## Install (5 minutes)
+## Quick install
+
+1. Install Python 3.10+ (`winget install Python.Python.3.12`).
+2. Download the code (**Code → Download ZIP** on GitHub) and extract it.
+3. Double-click `install.cmd`, then open `http://localhost:8800`.
+
+Step by step, with troubleshooting: [docs/manuals/install.md](docs/manuals/install.md).
+
+## Install from a terminal (5 minutes)
 
 ```powershell
 git clone https://github.com/IvanCuric23/ai-day-tracker.git
@@ -20,6 +28,7 @@ flowchart LR
 ```
 
 - `-JiraUrl` is optional. Without it, Jira keys show as plain text instead of links.
+- `install.cmd` runs the same `install.ps1`; options such as `-JiraUrl` can be added after it.
 - Run it again any time, for example after `git pull`. It updates the scripts and keeps your data and settings.
 
 ## Prerequisites
@@ -28,7 +37,7 @@ flowchart LR
 |---|---|---|
 | Windows 10/11 | yes | — |
 | Python 3.10+ | yes | `winget install Python.Python.3.12`. Only the standard library is used, so there's nothing to `pip install` |
-| Git | yes | your name and e-mail in `git config --global` (used to find your commits) |
+| Git | recommended (without it only a warning; tickets and commits are missing) | your name and e-mail in `git config --global` (used to find your commits) |
 | Claude Code and/or Copilot CLI | at least one | VS Code Copilot Chat history is read as well |
 | Admin rights | **no** | everything installs for your user only |
 
