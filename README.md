@@ -53,7 +53,7 @@ flowchart LR
 | Clock hook + `tickets.json` | `%USERPROFILE%\.claude\hooks\` |
 | Claude Code hooks | 4 entries added to `%USERPROFILE%\.claude\settings.json` (a backup is written first) |
 | Copilot CLI hooks | `%USERPROFILE%\.copilot\hooks\clock.json` |
-| Scheduled task **My AI day** | Mon–Fri 17:00: calculates yesterday and today |
+| Scheduled task **My AI day** | Mon–Fri 17:00: calculates yesterday and today, and trims the hook log (`clock.jsonl`) to the last 90 days |
 | Scheduled task **My AI dashboard server** | every 5 min: keeps the dashboard running (also on battery) |
 
 ## How tickets are found
@@ -109,6 +109,8 @@ python -m venv .venv
 .venv\Scripts\python -m ruff check .
 .venv\Scripts\python -m pytest
 ```
+
+How the parts fit together: [docs/how-it-works.md](docs/how-it-works.md).
 
 Tests use invented data in a temporary folder and never read your real Claude Code or Copilot history.
 

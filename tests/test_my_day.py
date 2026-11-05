@@ -104,3 +104,13 @@ def test_malformed_vscode_entries_are_skipped_and_valid_ones_kept(fresh_clock):
     assert prompts["vs-proj"] == ["vs prompt"]
     assert prompts["Other (no project folder)"] == ["no folder"]
     assert prompts["demo-proj"] == list(PROMPTS)
+
+
+def test_clock_lines_are_read_from_the_clock_file_variable(fresh_clock):
+    log = fresh_clock.parent / "clock.jsonl"                    # where conftest points CLOCK_FILE, not ~/.claude/clock
+    log.write_text(json.dumps({"time": f"{DAY}T10:00:00", "event": "start", "tool": "Claude", "session": "s1234567",
+                               "project": "demo-proj"}) + "\n", encoding="utf-8")
+    result = run_my_day(fresh_clock)
+    assert result.returncode == 0, result.stderr
+    day = json.loads((fresh_clock / "days" / f"{DAY}.json").read_text(encoding="utf-8"))
+    assert [(c["tool"], c["session"], c["start"]) for c in day["clock"]] == [("Claude", "s1234567", "10:00")]
