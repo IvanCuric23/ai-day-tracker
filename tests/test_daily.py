@@ -71,3 +71,42 @@ def test_daily_run_trims_the_log_and_notes_it_in_last_run_log(tmp_path):
                    env=home_env(tmp_path, CLOCK_FILE=str(clock / "clock.jsonl")))
     assert (clock / "clock.jsonl").read_text(encoding="utf-8") == new
     assert "clock log: dropped 1 lines older than 90 days, kept 1" in (clock / "days" / "last-run.log").read_text(encoding="utf-8")
+
+
+def test_trim_skips_the_replace_when_a_hook_appends_during_the_trim(daily, tmp_path, monkeypatch):
+    log = tmp_path / "clock.jsonl"
+    log.write_text(row(200) + row(2), encoding="utf-8", newline="")
+    appended = row(0)
+    real_stat = daily.os.stat
+
+    def stat_after_a_hook_wrote(p, *args, **kwargs):
+        if str(p) == str(log):
+            with open(log, "a", encoding="utf-8", newline="") as f:
+                f.write(appended)
+            monkeypatch.setattr(daily.os, "stat", real_stat)
+        return real_stat(p, *args, **kwargs)
+
+    monkeypatch.setattr(daily.os, "stat", stat_after_a_hook_wrote)
+    assert daily.trim_clock_log(str(log), NOW) == "clock log busy, trimmed next run"
+    assert log.read_text(encoding="utf-8") == row(200) + row(2) + appended      # nothing lost, trim left for next run
+    assert not (tmp_path / "clock.jsonl.tmp").exists()
+
+
+def test_trim_keeps_a_line_whose_time_is_out_of_range(daily, tmp_path):
+    log = tmp_path / "clock.jsonl"
+    extreme = ['{"time": "0001-01-01T00:00:00"}\n', '{"time": "9999-12-31T23:59:59+00:00"}\n']
+    log.write_text(row(200) + "".join(extreme) + row(2), encoding="utf-8", newline="")
+    daily.trim_clock_log(str(log), NOW)
+    assert log.read_text(encoding="utf-8") == "".join(extreme) + row(2)
+
+
+def test_trim_removes_its_temp_file_when_the_replace_fails(daily, tmp_path, monkeypatch):
+    log = tmp_path / "clock.jsonl"
+    log.write_text(row(200) + row(2), encoding="utf-8", newline="")
+
+    def refuse(*args):
+        raise PermissionError("locked")
+    monkeypatch.setattr(daily.os, "replace", refuse)
+    assert daily.trim_clock_log(str(log), NOW).startswith("clock log: trim failed")
+    assert log.read_text(encoding="utf-8") == row(200) + row(2)
+    assert not (tmp_path / "clock.jsonl.tmp").exists()
