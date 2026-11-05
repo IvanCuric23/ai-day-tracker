@@ -127,3 +127,11 @@ def test_dashboard_builds_without_a_version_file_and_shows_no_version(fresh_cloc
     assert run_my_day(fresh_clock).returncode == 0
     page = (fresh_clock / "index.html").read_text(encoding="utf-8")
     assert 'class="ver"' not in page and "<!--VERSION-->" not in page
+
+
+def test_dashboard_escapes_the_version_text(fresh_clock):
+    (fresh_clock / "VERSION").write_text("<b>&", encoding="utf-8")
+    assert run_my_day(fresh_clock).returncode == 0
+    page = (fresh_clock / "index.html").read_text(encoding="utf-8")
+    assert '<div class="ver">v&lt;b&gt;&amp;</div>' in page
+    assert '<div class="ver">v<b>&' not in page
