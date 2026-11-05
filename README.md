@@ -41,7 +41,7 @@ flowchart LR
 - **ZIP:** download the [latest release](https://github.com/IvanCuric23/ai-day-tracker/releases/latest), extract it and run `install.cmd`.
 - Your data and settings are kept.
 - **Your version:** the installer ends with `Installed ai-day-tracker v<version>` (or `Updated v<old> -> v<new>`), and the dashboard shows it small in the bottom-left corner.
-- **Check for update:** click the small link next to the version in the dashboard. It asks GitHub (only when clicked) for the latest release and tells you if a newer one exists; it does not install anything.
+- **Check for update:** click the small **Check for update** button next to the version in the dashboard. It asks GitHub (only when clicked) for the latest release and tells you if a newer one exists; it does not install anything.
 - What changed: [CHANGELOG.md](CHANGELOG.md).
 
 ## Prerequisites
