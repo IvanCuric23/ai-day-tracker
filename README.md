@@ -35,6 +35,14 @@ flowchart LR
 - `install.cmd` runs the same `install.ps1`; options such as `-JiraUrl` can be added after it.
 - Run it again any time, for example after `git pull`. It updates the scripts and keeps your data and settings.
 
+## Update
+
+- **git clone:** double-click `update.cmd` (it runs `git pull --ff-only`, then the installer).
+- **ZIP:** download the [latest release](https://github.com/IvanCuric23/ai-day-tracker/releases/latest), extract it and run `install.cmd`.
+- Your data and settings are kept.
+- **Your version:** the installer ends with `Installed ai-day-tracker v<version>` (or `Updated v<old> -> v<new>`), and the dashboard shows it small in the bottom-left corner.
+- What changed: [CHANGELOG.md](CHANGELOG.md).
+
 ## Prerequisites
 
 | Need | Required? | How |

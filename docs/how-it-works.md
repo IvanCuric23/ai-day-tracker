@@ -82,3 +82,11 @@ After the builds, `daily.py` rewrites `clock.jsonl` without the lines whose `tim
 (`CLOCK_KEEP_DAYS`): it writes `clock.jsonl.tmp` and `os.replace`s it. Lines it cannot parse are kept. An `OSError`
 is logged to `last-run.log` and never fails the run. The reason: the log only grows, and `my_day.py` reads it whole
 on every build.
+
+## Releasing a new version
+
+1. Change the number in `VERSION` (the only place it is written; `install.ps1` copies it to the clock folder and the dashboard shows it).
+2. Add a `## [X.Y.Z] - date` entry to `CHANGELOG.md`.
+3. Merge the pull request into `main`.
+4. Tag `vX.Y.Z` on `main` and push the tag.
+5. Create a GitHub release from that tag; `update.cmd` points ZIP users to the latest release.

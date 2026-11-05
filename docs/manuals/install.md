@@ -75,7 +75,7 @@ The first build covers the last 7 days of your existing history. The day is reca
 
 ## Update
 
-Download the new ZIP (or run `git pull`), then double-click `install.cmd` again. Scripts are updated; your data, `config.json` and `tickets.json` are kept.
+Cloned with git: double-click `update.cmd` (it pulls the new code and runs the installer). Downloaded a ZIP: get the [latest release](https://github.com/IvanCuric23/ai-day-tracker/releases/latest), extract it and double-click `install.cmd` again. Scripts are updated; your data, `config.json` and `tickets.json` are kept.
 
 ## Uninstall
 

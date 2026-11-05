@@ -482,6 +482,12 @@ json.dump(summary, open(summary_file, "w", encoding="utf-8"), ensure_ascii=False
 # one fixed colour per project, kept in colors.json so it never changes; biggest projects get the clearest colours
 board = open(os.path.join(HERE, "dashboard_template.html"), encoding="utf-8").read()
 board = board.replace("/*SUMMARY*/null", json.dumps(summary, ensure_ascii=False).replace("</", "<\\/"))
+try:                                                   # VERSION is copied here by install.ps1; without it, show nothing
+    with open(os.path.join(HERE, "VERSION"), encoding="utf-8-sig") as f:
+        _version = f.read().strip()
+except OSError:
+    _version = ""
+board = board.replace("<!--VERSION-->", f'<div class="ver">v{html.escape(_version)}</div>' if _version else "")
 board = board.replace("/*COLORS*/null", json.dumps(update_colors(summary), ensure_ascii=False))
 index = os.path.join(HERE, "index.html")
 open(index, "w", encoding="utf-8").write(board)

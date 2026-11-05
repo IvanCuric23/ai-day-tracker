@@ -114,3 +114,24 @@ def test_clock_lines_are_read_from_the_clock_file_variable(fresh_clock):
     assert result.returncode == 0, result.stderr
     day = json.loads((fresh_clock / "days" / f"{DAY}.json").read_text(encoding="utf-8"))
     assert [(c["tool"], c["session"], c["start"]) for c in day["clock"]] == [("Claude", "s1234567", "10:00")]
+
+
+def test_dashboard_shows_the_installed_version_when_version_file_exists(fresh_clock):
+    (fresh_clock / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    assert run_my_day(fresh_clock).returncode == 0
+    assert '<div class="ver">v1.2.3</div>' in (fresh_clock / "index.html").read_text(encoding="utf-8")
+
+
+def test_dashboard_builds_without_a_version_file_and_shows_no_version(fresh_clock):
+    assert not (fresh_clock / "VERSION").exists()
+    assert run_my_day(fresh_clock).returncode == 0
+    page = (fresh_clock / "index.html").read_text(encoding="utf-8")
+    assert 'class="ver"' not in page and "<!--VERSION-->" not in page
+
+
+def test_dashboard_escapes_the_version_text(fresh_clock):
+    (fresh_clock / "VERSION").write_text("<b>&", encoding="utf-8")
+    assert run_my_day(fresh_clock).returncode == 0
+    page = (fresh_clock / "index.html").read_text(encoding="utf-8")
+    assert '<div class="ver">v&lt;b&gt;&amp;</div>' in page
+    assert '<div class="ver">v<b>&' not in page

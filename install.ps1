@@ -77,8 +77,13 @@ if (-not ($UseClaude -or $UseCopilot)) {
 # ---- 2. files ------------------------------------------------------------------------------------
 Step "Copying scripts to $Clock"
 New-Item -ItemType Directory -Force -Path $Clock, $Hooks | Out-Null
+$VersionFile = Join-Path $Clock 'VERSION'
+$OldVersion = if (Test-Path $VersionFile) { ([string](Get-Content $VersionFile -Raw)).Trim() } else { '' }
+$RepoVersionFile = Join-Path $Repo 'VERSION'
+$Version = if (Test-Path $RepoVersionFile) { ([string](Get-Content $RepoVersionFile -Raw)).Trim() } else { '' }
 Copy-Item (Join-Path $Repo 'src\clock\*') $Clock -Recurse -Force -Exclude '__pycache__'
 Copy-Item (Join-Path $Repo 'src\hooks\clock.py') $Hooks -Force
+if ($Version) { [IO.File]::WriteAllText($VersionFile, $Version, [Text.UTF8Encoding]::new($false)) }
 $TicketsFile = Join-Path $Hooks 'tickets.json'
 if (-not (Test-Path $TicketsFile)) { Copy-Item (Join-Path $Repo 'src\hooks\tickets.example.json') $TicketsFile }
 Ok 'done (your days, clock.jsonl and tickets.json are kept)'
@@ -166,4 +171,7 @@ foreach ($n in 1..20) {
 }
 if ($up) { Ok "running: $url  (bookmark it)" } else { Warn "the dashboard did not answer on $url yet; try again in a minute" }
 if ($up -and -not $NoOpen) { Start-Process $url }
-Write-Host "`nInstalled. It calculates your day at 17:00; the 'Refresh today' button does it any time.`n" -ForegroundColor Green
+$done = if (-not $Version) { 'Installed ai-day-tracker (version unknown)' }
+        elseif ($OldVersion -and $OldVersion -ne $Version) { "Updated v$OldVersion -> v$Version" }
+        else { "Installed ai-day-tracker v$Version" }
+Write-Host "`n$done. It calculates your day at 17:00; the 'Refresh today' button does it any time.`n" -ForegroundColor Green
