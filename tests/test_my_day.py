@@ -119,19 +119,29 @@ def test_clock_lines_are_read_from_the_clock_file_variable(fresh_clock):
 def test_dashboard_shows_the_installed_version_when_version_file_exists(fresh_clock):
     (fresh_clock / "VERSION").write_text("1.2.3\n", encoding="utf-8")
     assert run_my_day(fresh_clock).returncode == 0
-    assert '<div class="ver">v1.2.3</div>' in (fresh_clock / "index.html").read_text(encoding="utf-8")
+    assert '<span id="verno">v1.2.3</span>' in (fresh_clock / "index.html").read_text(encoding="utf-8")
+
+
+def test_dashboard_has_the_update_button_and_api_url_when_version_file_exists(fresh_clock):
+    (fresh_clock / "VERSION").write_text("1.2.3\n", encoding="utf-8")
+    assert run_my_day(fresh_clock).returncode == 0
+    page = (fresh_clock / "index.html").read_text(encoding="utf-8")
+    assert 'id="updbtn"' in page and "Check for update" in page
+    assert "https://api.github.com/repos/IvanCuric23/ai-day-tracker/releases/latest" in page
+    assert "<!--VERSION-->" not in page and "<!--/VERSION-->" not in page
 
 
 def test_dashboard_builds_without_a_version_file_and_shows_no_version(fresh_clock):
     assert not (fresh_clock / "VERSION").exists()
     assert run_my_day(fresh_clock).returncode == 0
     page = (fresh_clock / "index.html").read_text(encoding="utf-8")
-    assert 'class="ver"' not in page and "<!--VERSION-->" not in page
+    assert 'class="ver"' not in page and "<!--VERSION-->" not in page and "<!--/VERSION-->" not in page
+    assert 'id="updbtn"' not in page and "Check for update" not in page and "api.github.com" not in page
 
 
 def test_dashboard_escapes_the_version_text(fresh_clock):
     (fresh_clock / "VERSION").write_text("<b>&", encoding="utf-8")
     assert run_my_day(fresh_clock).returncode == 0
     page = (fresh_clock / "index.html").read_text(encoding="utf-8")
-    assert '<div class="ver">v&lt;b&gt;&amp;</div>' in page
-    assert '<div class="ver">v<b>&' not in page
+    assert '<span id="verno">v&lt;b&gt;&amp;</span>' in page
+    assert '<span id="verno">v<b>&' not in page

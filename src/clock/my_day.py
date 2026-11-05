@@ -487,7 +487,8 @@ try:                                                   # VERSION is copied here 
         _version = f.read().strip()
 except OSError:
     _version = ""
-board = board.replace("<!--VERSION-->", f'<div class="ver">v{html.escape(_version)}</div>' if _version else "")
+_block = re.search(r"<!--VERSION-->(.*?)<!--/VERSION-->", board, re.S)   # version label + update button + its script
+board = board.replace(_block.group(0), _block.group(1).replace("{{VERSION}}", html.escape(_version)) if _version else "")
 board = board.replace("/*COLORS*/null", json.dumps(update_colors(summary), ensure_ascii=False))
 index = os.path.join(HERE, "index.html")
 open(index, "w", encoding="utf-8").write(board)

@@ -35,7 +35,7 @@ flowchart LR
 | `clock/daily.py` | The 17:00 run: builds `yesterday` then `today`, then trims `clock.jsonl`. Writes `days/last-run.log`. |
 | `setup_hooks.py` | Adds or removes the hooks (see below). Called by the installer scripts. |
 | `install.ps1`, `uninstall.ps1` | Copy `src\clock\*` to the clock folder and `hooks\clock.py` to the hooks folder, write `config.json` if missing, call `setup_hooks.py`, register the tasks, back-fill the last days, start the server. Uninstall keeps your data unless `-RemoveData`. |
-| `*_template.html` | `my_day_template.html` (day page) and `dashboard_template.html` (calendar); data is injected into them. |
+| `*_template.html` | `my_day_template.html` (day page) and `dashboard_template.html` (calendar); data is injected into them. The dashboard's version label and **Check for update** button sit between `<!--VERSION-->` markers that `my_day.py` drops when there is no `VERSION` file; the button calls the GitHub latest-release API only when clicked (repo URL also in `update.ps1`). |
 
 ## Hook events
 

@@ -74,6 +74,11 @@
   .search input { flex: 1; font: inherit; font-size: 14px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
                   background: var(--card); color: var(--ink); }
   .ver { position: fixed; left: 8px; bottom: 4px; font-size: 11px; color: var(--muted); opacity: .7; pointer-events: none; }
+  .ver button, .ver .msg a { pointer-events: auto; }
+  .ver button { font: inherit; font-size: 11px; color: var(--muted); background: none; border: none; padding: 0 0 0 6px;
+                cursor: pointer; text-decoration: underline; }
+  .ver button:hover:not(:disabled) { color: var(--accent); }
+  .ver button:disabled { cursor: default; }
   .wk { cursor: pointer; }
   .wk:hover { color: var(--accent); }
   @media (max-width: 1000px) {
@@ -94,6 +99,41 @@
   </div>
 </div>
 <!--VERSION-->
+<div class="ver"><span id="verno">v{{VERSION}}</span><button id="updbtn" type="button">Check for update</button> <span class="msg" id="updmsg"></span></div>
+<script>
+// Only request this page ever makes: runs when "Check for update" is clicked, never on load.
+// Same repository as the releases URL in update.ps1: a fork changes both.
+const LATEST_API = "https://api.github.com/repos/IvanCuric23/ai-day-tracker/releases/latest";
+const verParts = v => String(v).replace(/^v/i, "").split(".").map(x => parseInt(x, 10) || 0);
+function verCmp(a, b) {
+  const x = verParts(a), y = verParts(b);
+  for (let i = 0; i < Math.max(x.length, y.length, 3); i++) {
+    const d = (x[i] || 0) - (y[i] || 0);
+    if (d) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+document.getElementById("updbtn").addEventListener("click", async e => {
+  const btn = e.currentTarget, msg = document.getElementById("updmsg");
+  const mine = document.getElementById("verno").textContent.replace(/^v/i, "");
+  btn.disabled = true;
+  msg.textContent = "Checking…";
+  try {
+    const r = await fetch(LATEST_API, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if (typeof j.tag_name !== "string" || typeof j.html_url !== "string" || !/^https:\/\//.test(j.html_url)) throw new Error("bad data");
+    const latest = j.tag_name.replace(/^v/i, ""), c = verCmp(mine, latest);
+    if (c === 0) msg.textContent = `Up to date (v${mine})`;
+    else if (c < 0) msg.innerHTML = `<a href="${esc(j.html_url)}" target="_blank" rel="noopener">v${esc(latest)} is available</a> - double-click update.cmd (git) or download the ZIP`;
+    else msg.textContent = `v${mine} installed; the latest release is v${latest}`;
+  } catch (err) {
+    msg.textContent = "Couldn't check: offline or GitHub limit, try later";
+  }
+  btn.disabled = false;
+});
+</script>
+<!--/VERSION-->
 <script>
 const S = /*SUMMARY*/null;
 const C = /*COLORS*/null;
