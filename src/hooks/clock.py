@@ -118,7 +118,8 @@ def hook(tool: str, event: str) -> None:
     cwd = data.get("cwd") or os.getcwd()
     # Copilot may send no session id: one id per tool + folder keeps its lines together
     session = str(data.get("session_id") or data.get("sessionId") or f"{tool[:2].lower()}{zlib.crc32(cwd.encode()):08x}"[:8])
-    branch = git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
+    # "work" fires on every tool call: skip git there (my_day.py takes the branch from the session's other lines)
+    branch = "" if event == "work" else git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
     extra = {}
     if event == "prompt":
         extra["ask"] = short(data.get("prompt") or data.get("userPrompt"))
