@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 rem the whole block is read before powershell (and its git pull) can rewrite this file
 (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update.ps1" %*
