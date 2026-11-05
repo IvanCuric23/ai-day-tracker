@@ -110,12 +110,6 @@ def touched_today(path: str) -> bool:
         return False
 
 
-CANON = {"ai-agent-templates": "AI-Agent-Templates", "test-writer-plugin": "Test-Writer-Plugin",
-         "powrshellagnet": "PowrshellAgnet", "hocuknjigu": "HocuKnjigu", "hk_consigrepo": "HocuKnjigu – Consignment",
-         "zg bc impl orqa": "ZG BC IMPL ORQA", "zg-bc-impl-orqa.wiki": "ZG BC IMPL ORQA",
-         "zg bc impl apis": "ZG BC IMPL APIS", "parcel-integration": "Parcel-Integration", "prima nav": "Prima NAV"}
-
-
 OTHER = "Other (no project folder)"
 
 
@@ -125,11 +119,11 @@ def project(cwd: str | None) -> str:
     p = cwd.replace("/", "\\")
     w = re.search(r"(?i)worktrees\\(?:[^\\_]+_)?([^\\]+)\\", p + "\\")
     if w:
-        return CANON.get(w.group(1).lower(), w.group(1))
+        return w.group(1)
     m = re.match(r"(?i)c:\\VS\\([^\\]+)", p)
     if m:
         name = re.sub(r"(?i)(-wt.*|-ci|-notice|-verify|-v3|-stable|-al-cops)$", "", m.group(1))
-        return CANON.get(name.lower(), name)
+        return name
     return OTHER
 
 

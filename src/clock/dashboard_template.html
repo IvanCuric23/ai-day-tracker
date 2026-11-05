@@ -131,7 +131,7 @@ function render() {
   let h = `<div class="bar"><h1>${month.toLocaleString("en-GB", { month: "long", year: "numeric" })}</h1>
     <button id="prev">‹</button><button id="now">Today</button><button id="next">›</button>
     ${location.protocol.startsWith("http") ? `<button id="refresh" title="Rebuild today from your sessions (~10 s)">⟳ Refresh today</button>` : ""}</div>
-    ${location.protocol.startsWith("http") ? `<form class="search" id="sform"><input id="q" placeholder="Search all days: ticket, branch, DPD, consignment…" value="${esc(lastQ)}"><button>Search</button></form>` : ""}
+    ${location.protocol.startsWith("http") ? `<form class="search" id="sform"><input id="q" placeholder="Search all days: ticket, branch, project, prompt…" value="${esc(lastQ)}"><button>Search</button></form>` : ""}
     <div class="stats">${only ? `<span class="only"><i style="background:${colorOf(only)}"></i><b>${esc(only)}</b>
       <button id="clear" title="Show all projects again">× all projects</button></span>` : ""}
     <span><b>${hm(total)}</b> ${only ? "on it" : "with AI"} this month</span><span><b>${worked}</b> days</span><span>📝 = work log ready</span>
