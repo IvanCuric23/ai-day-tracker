@@ -377,7 +377,7 @@ data = {
 
 # clock: exact start/stop per session, written live by the clock.py hook
 clock_file = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--clock=")),
-                  os.path.join(HOME, ".claude", "clock", "clock.jsonl"))
+                  os.environ.get("CLOCK_FILE") or os.path.join(HOME, ".claude", "clock", "clock.jsonl"))   # as clock.py
 by_session = collections.defaultdict(list)
 if os.path.exists(clock_file):
     for raw in open(clock_file, encoding="utf-8", errors="ignore"):
