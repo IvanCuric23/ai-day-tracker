@@ -28,7 +28,7 @@ flowchart LR
 
 | File (in `src/`) | Role |
 |---|---|
-| `hooks/clock.py` | The hook. One JSON line per event appended to `clock.jsonl` (path: `CLOCK_FILE` env var, else `~/.claude/clock/clock.jsonl`). Never prints, never fails. `clock.py backfill <date>` rebuilds a day's lines from Claude history. Errors go to `clock.log` beside the log. |
+| `hooks/clock.py` | The hook. One JSON line per event appended to `clock.jsonl` (path: see the rule below). Never prints, never fails. `clock.py backfill <date>` rebuilds a day's lines from Claude history. Errors go to `clock.log` beside the log. |
 | `hooks/tickets.example.json` | Template for `tickets.json` (branch or `project:<folder>` to ticket), read by the hook and `my_day.py`. |
 | `clock/my_day.py` | Builds one day (`today`, `yesterday` or a date): reads the three histories, `clock.jsonl` and git commits, writes the day files, then rebuilds `summary.json`, `colors.json` and `index.html`. Config: `config.json` (authors, Jira URL, port, day hours, `reports_dir`). |
 | `clock/server.py` | Local server on `127.0.0.1:<port>` (default 8800). `GET /`, `/days/<file>`, `/worklogs`, `/worklog/<date>`, `/search?q=`; `POST /refresh[?day=]` runs `my_day.py`. A second copy cannot bind the port and exits. |
@@ -48,10 +48,16 @@ flowchart LR
 | Copilot CLI | `sessionStart` / `userPromptSubmitted` / `sessionEnd` | `start` / `prompt` / `end` | as above |
 | Copilot CLI | `postToolUse` | `work` | a heartbeat on every tool call; **no git call**, so `branch` is empty |
 
-- Every other line carries `branch` from `git rev-parse`; `my_day.py` takes a session's branch (and project, ticket)
+- Every other live line carries `branch` from `git rev-parse` (backfilled lines take `gitBranch` from the Claude history); `my_day.py` takes a session's branch (and project, ticket)
   from its last non-empty value, so the empty `work` branch costs nothing.
 - Claude Code has no per-tool hook here; its `work` lines only come from `backfill`.
 - Claude hooks are merged into `~/.claude/settings.json` (backup first); Copilot's go to `~/.copilot/hooks/clock.json`.
+
+## Where `clock.jsonl` is found
+
+`hooks/clock.py`, `daily.py` and `my_day.py` use one rule: the `CLOCK_FILE` environment variable if set, else the
+default. The default is `~/.claude/clock/clock.jsonl` for the hook and `my_day.py`, and `clock.jsonl` beside
+`daily.py` (the same folder once installed). `my_day.py` additionally lets a `--clock=<file>` argument win over both.
 
 ## Scheduled tasks
 
