@@ -3,6 +3,11 @@
 All notable changes to this project are listed here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-11-05
+
+### Changed
+- The day page's **When** timeline follows the **Only 7:00–19:00** filter: ticked, it shows only the working hours; unticked, the whole day.
+
 ## [1.1.0] - 2026-11-05
 
 ### Added
