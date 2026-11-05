@@ -118,8 +118,10 @@ def hook(tool: str, event: str) -> None:
     cwd = data.get("cwd") or os.getcwd()
     # Copilot may send no session id: one id per tool + folder keeps its lines together
     session = str(data.get("session_id") or data.get("sessionId") or f"{tool[:2].lower()}{zlib.crc32(cwd.encode()):08x}"[:8])
-    # "work" fires on every tool call: skip git there (my_day.py takes the branch from the session's other lines)
-    branch = "" if event == "work" else git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
+    # "work" fires on every tool call: no git, no project, branch or ticket. my_day.py only needs its time and takes
+    # project, branch and ticket from the session's other lines (their last non-empty value)
+    work = event == "work"
+    branch = "" if work else git(cwd, "rev-parse", "--abbrev-ref", "HEAD")
     extra = {}
     if event == "prompt":
         extra["ask"] = short(data.get("prompt") or data.get("userPrompt"))
@@ -131,7 +133,9 @@ def hook(tool: str, event: str) -> None:
         extra["how"] = data.get("source", "")        # startup / resume / clear / compact
     if event == "end":
         extra["how"] = data.get("reason", "")
-    write([line(datetime.now().astimezone(), event, tool, session, cwd, branch, **extra)])
+    row = line(datetime.now().astimezone(), event, tool, session, "" if work else cwd, branch, **extra)
+    row["cwd"] = cwd                                    # line() derives the project from cwd: a work line passes ""
+    write([row])
 
 
 def backfill(day: str) -> None:

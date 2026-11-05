@@ -75,15 +75,17 @@ def test_hook_with_invalid_stdin_still_writes_a_row_and_prints_nothing(clock, is
     assert len((isolated_home / "clock.jsonl").read_text(encoding="utf-8").splitlines()) == 1
 
 
-def test_work_event_writes_a_row_without_running_git(clock, isolated_home, monkeypatch):
-    def no_git(*args):
-        raise AssertionError("git must not run for a work event")
-    monkeypatch.setattr(clock, "git", no_git)
-    monkeypatch.setattr(clock, "project", lambda cwd: "demo")     # project() also calls git, once per process
+def test_work_event_writes_a_bare_row_without_running_git_or_project(clock, isolated_home, monkeypatch):
+    def forbidden(*args):
+        raise AssertionError("a work event must not run git or look up the project")
+    monkeypatch.setattr(clock, "git", forbidden)
+    monkeypatch.setattr(clock, "project", forbidden)
     feed_stdin(monkeypatch, json.dumps({"cwd": str(isolated_home), "session_id": "s1234567890"}).encode())
     clock.hook("Copilot", "work")
     rows = [json.loads(x) for x in (isolated_home / "clock.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert [(r["event"], r["tool"], r["branch"]) for r in rows] == [("work", "Copilot", "")]
+    assert [(r["event"], r["tool"], r["session"], r["project"], r["branch"], r["ticket"], r["system"]) for r in rows] \
+        == [("work", "Copilot", "s1234567", "", "", "", "")]
+    assert rows[0]["cwd"] == str(isolated_home)
 
 
 def test_git_with_nul_in_cwd_returns_empty(clock):
