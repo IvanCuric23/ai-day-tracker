@@ -15,6 +15,7 @@
 #>
 $ErrorActionPreference = 'Stop'
 $Repo = $PSScriptRoot
+# The repository below is also written in LATEST_API in src/clock/dashboard_template.html: a fork changes both.
 
 if (-not ((Test-Path (Join-Path $Repo '.git')) -and (Get-Command git -ErrorAction SilentlyContinue))) {
     Write-Host "This copy is not a git clone (or git is not installed), so it cannot update itself." -ForegroundColor Yellow
