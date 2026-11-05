@@ -107,7 +107,10 @@ function render() {
     .filter(p => p.h > 0 || mode === "all")
     .sort((a, b) => b.h - a.h);
   const total = D.union[mode] / 3600, night = (D.union.all - D.union.day) / 3600, max = Math.max(...projects.map(p => p.h), 0.01);
-  const pct = m => (m / 1440 * 100) + "%";
+  const day = mode === "day", w0 = day ? D.dayFrom * 60 : 0, w1 = day ? D.dayTo * 60 : 1440;   // When-track window, minutes
+  const pct = m => ((m - w0) / (w1 - w0) * 100) + "%";                                          // position relative to the window
+  const ticks = day ? [...Array.from({ length: Math.ceil((D.dayTo - D.dayFrom) / 2) }, (_, i) => D.dayFrom + i * 2), D.dayTo]
+                    : [0, 3, 6, 9, 12, 15, 18, 21, 24];
 
   let h = `<div class="head"><div><h1>${esc(D.date)}</h1>
       <div class="total">${hm(total)}<small>with AI · ${projects.length} projects</small></div></div>
@@ -118,11 +121,13 @@ function render() {
   h += `<section class="card"><h2>When</h2>`;
   for (const p of projects)
     h += `<div class="tl-row"><div class="tl-name" title="${esc(p.name)}">${esc(p.name)}</div>
-      <div class="track" style="--df:${pct(D.dayFrom * 60)};--dt:${pct(D.dayTo * 60)}">${p.segments.map(([a, b]) =>
-        `<div class="seg" title="${fmt(a)}–${fmt(b)}" style="left:${pct(a)};width:${pct(b - a)};background:${p.color}"></div>`).join("")}</div></div>`;
-  h += `<div class="axis"><div></div><div class="ticks">${[0, 3, 6, 9, 12, 15, 18, 21, 24].map(x =>
+      <div class="track" style="--df:${day ? "0%" : pct(D.dayFrom * 60)};--dt:${day ? "100%" : pct(D.dayTo * 60)}">${p.segments
+        .filter(([a, b]) => b > w0 && a < w1)
+        .map(([a, b]) => { const ca = Math.max(a, w0), cb = Math.min(b, w1);   // clipped to the window; the title keeps the real times
+          return `<div class="seg" title="${fmt(a)}–${fmt(b)}" style="left:${pct(ca)};width:${pct(w0 + cb - ca)};background:${p.color}"></div>`; }).join("")}</div></div>`;
+  h += `<div class="axis"><div></div><div class="ticks">${ticks.map(x =>
       `<span style="left:${pct(x * 60)}">${String(x).padStart(2, "0")}</span>`).join("")}</div></div>
-      <p class="note">Shaded = outside working hours. Hover a block to see the time.</p></section>`;
+      <p class="note">${day ? "" : "Shaded = outside working hours. "}Hover a block to see the time.</p></section>`;
 
   h += `<section class="card"><h2>Where the time went</h2>`;
   for (const p of projects)
