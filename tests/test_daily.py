@@ -66,7 +66,8 @@ def test_daily_run_trims_the_log_and_notes_it_in_last_run_log(tmp_path):
     old = json.dumps({"time": (now - timedelta(days=120)).isoformat(timespec="seconds"), "event": "work"}) + "\n"
     new = json.dumps({"time": now.isoformat(timespec="seconds"), "event": "work"}) + "\n"
     (clock / "clock.jsonl").write_text(old + new, encoding="utf-8", newline="")
+    # no my_day.py here: the builds fail, the trim still runs
     subprocess.run([sys.executable, "-X", "utf8", str(clock / "daily.py")], capture_output=True, timeout=60,
-                   env=home_env(tmp_path, CLOCK_FILE=str(clock / "clock.jsonl")))   # no my_day.py here: the builds fail, the trim still runs
+                   env=home_env(tmp_path, CLOCK_FILE=str(clock / "clock.jsonl")))
     assert (clock / "clock.jsonl").read_text(encoding="utf-8") == new
     assert "clock log: dropped 1 lines older than 90 days, kept 1" in (clock / "days" / "last-run.log").read_text(encoding="utf-8")
