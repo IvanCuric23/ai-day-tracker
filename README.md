@@ -6,6 +6,10 @@ Tracks your Claude Code and GitHub Copilot sessions and builds a local dashboard
 - **Calculates once a day at 17:00** (Mon–Fri), and anytime you click **⟳ Refresh today**.
 - **Everything stays on your PC.** Nothing is uploaded, and the dashboard only answers on `localhost`.
 
+![The dashboard: a month calendar with hours per day, and the selected day with when you worked, time per project and the ticket](docs/images/dashboard.png)
+
+*The screenshot uses invented demo data.*
+
 ## Quick install
 
 1. Install Python 3.10+ (`winget install Python.Python.3.12`).
