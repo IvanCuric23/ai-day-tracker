@@ -30,5 +30,10 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-& (Join-Path $Repo 'install.ps1') @args -NoOpen
-exit $LASTEXITCODE
+# install.ps1 signals a real failure by throwing or by its own "exit 1"; a day build that only warned leaves a stale
+# $LASTEXITCODE, so the exit code is not used. $? is false after a throw or a non-zero exit of the script.
+$installArgs = @($args)
+if (-not ($installArgs | Where-Object { "$_" -ieq '-NoOpen' })) { $installArgs += '-NoOpen' }
+try { & (Join-Path $Repo 'install.ps1') @installArgs } catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }
+if (-not $?) { exit 1 }
+exit 0
